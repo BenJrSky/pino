@@ -2,33 +2,43 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var store: PinStore
-    @State private var findPin: Pin?
+    @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
         NavigationStack {
-            SaveMapScreen(findPin: $findPin)
+            SaveMapScreen(findPin: $environment.findPin)
                 .toolbarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
-                    if let pin = store.lastPin {
-                        ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .topBarLeading) {
+                        NavigationLink {
+                            ManualPinView()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Add pin")
+                    }
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if let pin = store.lastPin {
                             Button {
-                                findPin = pin
+                                environment.find(pin)
                             } label: {
                                 Image(systemName: "location.north.line.fill")
                             }
                             .accessibilityLabel("Find")
                         }
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
                         NavigationLink {
                             PinListView()
                         } label: {
-                            Image(systemName: "clock.arrow.circlepath")
+                            Image(systemName: "mappin")
+                                .symbolRenderingMode(.monochrome)
                         }
                         .disabled(store.pins.isEmpty)
-                        .accessibilityLabel("History")
+                        .accessibilityLabel("Pins")
                     }
+                }
+                .navigationDestination(isPresented: $environment.showPinsList) {
+                    PinListView()
                 }
         }
     }

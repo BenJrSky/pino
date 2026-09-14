@@ -1,14 +1,17 @@
-import MapKit
+@preconcurrency import MapKit
 
 enum PinoDirections {
-    static func route(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) async -> MKRoute? {
+    nonisolated static func route(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) async -> MKRoute? {
+        if let automobile = await calculate(from: from, to: to, type: .automobile) {
+            return automobile
+        }
         if let walking = await calculate(from: from, to: to, type: .walking) {
             return walking
         }
-        return await calculate(from: from, to: to, type: .automobile)
+        return await calculate(from: from, to: to, type: .any)
     }
 
-    private static func calculate(
+    nonisolated private static func calculate(
         from: CLLocationCoordinate2D,
         to: CLLocationCoordinate2D,
         type: MKDirectionsTransportType
@@ -18,10 +21,33 @@ enum PinoDirections {
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: to))
         request.transportType = type
         request.requestsAlternateRoutes = false
+        let directions = MKDirections(request: request)
         return await withCheckedContinuation { continuation in
-            MKDirections(request: request).calculate { response, _ in
-                continuation.resume(returning: response?.routes.first)
+            let once = Once(continuation)
+            directions.calculate { response, _ in
+                once.resume(response?.routes.first)
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 3.5) {
+                directions.cancel()
+                once.resume(nil)
             }
         }
+    }
+}
+
+nonisolated private final class Once<Value>: @unchecked Sendable {
+    private var continuation: CheckedContinuation<Value, Never>?
+    private let lock = NSLock()
+
+    init(_ continuation: CheckedContinuation<Value, Never>) {
+        self.continuation = continuation
+    }
+
+    func resume(_ value: Value) {
+        lock.lock()
+        let pending = continuation
+        continuation = nil
+        lock.unlock()
+        pending?.resume(returning: value)
     }
 }

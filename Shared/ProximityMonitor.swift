@@ -38,9 +38,32 @@ final class ProximityMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
             let content = UNMutableNotificationContent()
             content.title = "PINO"
             content.body = String(format: String(localized: "You're near %@."), name)
+            content.userInfo = ["pinId": region.identifier]
             content.sound = .default
             let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
             try? await UNUserNotificationCenter.current().add(request)
+        }
+    }
+}
+
+final class ArrivalNotifications: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound, .list]
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard let raw = response.notification.request.content.userInfo["pinId"] as? String,
+              let id = UUID(uuidString: raw),
+              let pin = AppEnvironment.shared.store.pins.first(where: { $0.id == id })
+        else { return }
+        await MainActor.run {
+            AppEnvironment.shared.find(pin)
         }
     }
 }

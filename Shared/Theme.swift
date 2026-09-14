@@ -2,7 +2,7 @@ import MapKit
 import SwiftUI
 
 extension Color {
-    static let pino = Color(red: 0.17, green: 0.52, blue: 0.35)
+    static let pino = Color(red: 0.32, green: 0.76, blue: 0.50)
     static let route = Color(red: 0.0, green: 0.48, blue: 1.0)
 }
 
@@ -31,6 +31,18 @@ enum PinoMaps {
                 longitudeDelta: max((maxLon - minLon) * 1.9, 0.0035)
             )
         )
+    }
+
+    static func userCamera(_ coordinate: CLLocationCoordinate2D) -> MapCameraPosition {
+#if os(watchOS)
+        let delta = 0.0026
+#else
+        let delta = 0.004
+#endif
+        return .region(MKCoordinateRegion(
+            center: coordinate,
+            span: MKCoordinateSpan(latitudeDelta: delta, longitudeDelta: delta)
+        ))
     }
 
     static func camera(for route: MKRoute) -> MapCameraPosition {
@@ -112,10 +124,46 @@ extension View {
 extension View {
     @ViewBuilder
     func pinoMapStyle() -> some View {
-        if #available(iOS 18.0, watchOS 11.0, *) {
-            self.mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+#if os(watchOS)
+        if #available(watchOS 11.0, *) {
+            self.mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll, showsTraffic: false))
+                .environment(\.colorScheme, .light)
+                .preferredColorScheme(.light)
         } else {
             self.mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: false))
+                .environment(\.colorScheme, .light)
+                .preferredColorScheme(.light)
         }
+#else
+        if #available(iOS 18.0, *) {
+            self.mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
+                .environment(\.colorScheme, .light)
+        } else {
+            self.mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: false))
+                .environment(\.colorScheme, .light)
+        }
+#endif
+    }
+}
+
+struct RecenterButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "location.fill")
+#if os(watchOS)
+                .font(.caption.weight(.semibold))
+                .frame(width: 32, height: 32)
+#else
+                .font(.body.weight(.semibold))
+                .frame(width: 44, height: 44)
+#endif
+                .foregroundStyle(.black.opacity(0.7))
+                .background(.white.opacity(0.92), in: Circle())
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("My location")
     }
 }

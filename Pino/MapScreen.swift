@@ -2,18 +2,26 @@ import SwiftUI
 
 struct MapScreen: View {
     @EnvironmentObject private var store: PinStore
-    @State private var findPin: Pin?
+    @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
         NavigationStack {
-            SaveMapScreen(findPin: $findPin)
+            SaveMapScreen(findPin: $environment.findPin)
                 .toolbarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        NavigationLink {
+                            ManualPinView()
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .accessibilityLabel("Add pin")
+                    }
                     if let pin = store.lastPin {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button {
-                                findPin = pin
+                                environment.find(pin)
                             } label: {
                                 Image(systemName: "location.north.line.fill")
                             }

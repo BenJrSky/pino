@@ -6,13 +6,19 @@ struct RootView: View {
     @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
-        TabView {
+        TabView(selection: $environment.selectedTab) {
             MapScreen()
                 .tabItem { Label("Map", systemImage: "map.fill") }
-            HistoryScreen()
-                .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+                .tag(0)
+            PinsScreen()
+                .tabItem { Label("Pins", systemImage: "mappin") }
+                .tag(1)
             SettingsScreen()
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tag(2)
+        }
+        .onAppear {
+            environment.selectedTab = 0
         }
         .onChange(of: store.pins) { _, _ in environment.refreshProximity() }
         .onChange(of: settings.proximityAlerts) { _, _ in environment.refreshProximity() }

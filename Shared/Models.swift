@@ -93,6 +93,10 @@ enum PinCategory: String, Codable, CaseIterable, Identifiable {
         case .other: String(localized: "Other")
         }
     }
+
+    static var alphabetically: [PinCategory] {
+        allCases.sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+    }
 }
 
 enum RetentionPeriod: String, Codable, CaseIterable, Identifiable {
@@ -160,7 +164,7 @@ struct Pin: Identifiable, Codable, Equatable, Hashable {
         let now = Date()
         return Pin(
             id: UUID(),
-            name: nil,
+            name: category?.label,
             category: category,
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,
@@ -217,7 +221,7 @@ enum Formatters {
     static func duration(_ interval: TimeInterval) -> String {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = interval >= 3600 ? [.hour, .minute] : [.minute]
-        formatter.unitsStyle = .short
+        formatter.unitsStyle = .abbreviated
         formatter.zeroFormattingBehavior = .dropLeading
         formatter.calendar = Calendar.autoupdatingCurrent
         return formatter.string(from: max(interval, 60)) ?? ""

@@ -5,6 +5,7 @@ struct PinDetailView: View {
     let pin: Pin
     @EnvironmentObject private var store: PinStore
     @EnvironmentObject private var location: LocationService
+    @EnvironmentObject private var environment: AppEnvironment
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
     @State private var category: PinCategory?
@@ -47,6 +48,7 @@ struct PinDetailView: View {
                     .background(Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 CategoryPicker(selection: $category)
+                    .id(pin.id)
 
                 VStack(alignment: .leading, spacing: 4) {
                     if let address = current.address {
@@ -57,8 +59,8 @@ struct PinDetailView: View {
                 }
                 .font(.subheadline)
 
-                NavigationLink {
-                    FindView(pin: current, showsManagement: false)
+                Button {
+                    environment.find(current)
                 } label: {
                     Label("Find", systemImage: "location.north.line.fill")
                         .frame(maxWidth: .infinity)

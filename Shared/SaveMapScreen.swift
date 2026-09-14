@@ -8,8 +8,7 @@ struct SaveMapScreen: View {
     @EnvironmentObject private var location: LocationService
     @State private var isSaving = false
     @State private var pickerVisible = false
-    @State private var selected: PinCategory? = .car
-    @State private var crownValue = 0.0
+    @State private var selected: PinCategory = .car
     @State private var errorMessage: String?
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: MKRoute?
@@ -19,21 +18,11 @@ struct SaveMapScreen: View {
     @State private var settingsPin: Pin?
     @State private var pendingPinTap: Task<Void, Never>?
 
-    private let categories = PinCategory.allCases
-
 #if os(watchOS)
     private let markSize: CGFloat = 26
-    private let centerSize: CGFloat = 58
-    private let peekSize: CGFloat = 40
 #else
     private let markSize: CGFloat = 40
-    private let centerSize: CGFloat = 96
-    private let peekSize: CGFloat = 68
 #endif
-
-    private var selectedCategory: PinCategory {
-        selected ?? .car
-    }
 
     var body: some View {
         ZStack {
@@ -55,7 +44,7 @@ struct SaveMapScreen: View {
                         .stroke(Color.route, lineWidth: 6)
                 } else if let findPin, let user = location.location {
                     MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
-                        .stroke(Color.route.opacity(0.7), style: StrokeStyle(lineWidth: 4, dash: [8, 6]))
+                        .stroke(Color.route.opacity(0.75), style: StrokeStyle(lineWidth: 5, dash: [10, 7]))
                 }
             }
             .pinoMapStyle()
@@ -66,16 +55,43 @@ struct SaveMapScreen: View {
 
             if let findPin, !pickerVisible {
                 WayfindingBanner(pin: findPin, route: route)
-                FindHUD(pin: findPin, route: route, heading: heading(to: findPin))
+            }
+
+            if !pickerVisible {
+                VStack {
+                    Spacer()
+                    HStack(alignment: .center, spacing: 8) {
+                        if let findPin {
+                            FindHUD(pin: findPin, route: route)
+                            Spacer(minLength: 4)
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                        RecenterButton(action: recenter)
+                    }
+                }
+#if os(watchOS)
+                .padding(6)
+#else
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
+#endif
             }
 
             if pickerVisible {
-                Color.black.opacity(0.12)
+#if os(watchOS)
+                gallery
+#else
+                Color.black.opacity(0.18)
                     .ignoresSafeArea()
                     .onTapGesture { pickerVisible = false }
 
-                slider
-                    .allowsHitTesting(true)
+                VStack {
+                    Spacer()
+                    gallery
+                }
+                .allowsHitTesting(true)
+#endif
             }
 
             if isSaving {
@@ -83,30 +99,7 @@ struct SaveMapScreen: View {
                     .tint(.white)
             }
         }
-#if os(watchOS)
-        .focusable(pickerVisible)
-        .digitalCrownRotation(
-            $crownValue,
-            from: 0,
-            through: Double(categories.count - 1),
-            by: 1,
-            sensitivity: .low,
-            isContinuous: false,
-            isHapticFeedbackEnabled: true
-        )
-#endif
-        .onChange(of: crownValue) { _, value in
-            guard pickerVisible else { return }
-            let index = min(max(Int(value.rounded()), 0), categories.count - 1)
-            selected = categories[index]
-        }
-        .onChange(of: selected) { _, newValue in
-            guard let newValue, let index = categories.firstIndex(of: newValue) else { return }
-            let next = Double(index)
-            if abs(crownValue - next) >= 0.5 {
-                crownValue = next
-            }
-        }
+        .toolbar(pickerVisible ? .hidden : .automatic, for: .navigationBar)
         .onChange(of: findPin) { _, _ in
             lastRoutedFrom = nil
             route = nil
@@ -139,88 +132,36 @@ struct SaveMapScreen: View {
         }
     }
 
-    private var selectedIndex: Int {
-        categories.firstIndex(of: selectedCategory) ?? 0
-    }
-
-    private func circularDelta(for index: Int) -> Int {
-        let count = categories.count
-        var delta = index - selectedIndex
-        if delta > count / 2 { delta -= count }
-        if delta < -(count / 2) { delta += count }
-        return delta
-    }
-
-    private func moveSelection(by steps: Int) {
-        guard steps != 0 else { return }
-        let count = categories.count
-        let next = (selectedIndex + steps % count + count) % count
-        selected = categories[next]
-        PinoHaptics.click()
-    }
-
-    private var slider: some View {
-        GeometryReader { geo in
-            let spacing = peekSize * 0.42
-            let maxOffset = geo.size.width / 2 + peekSize
-            ZStack {
-                ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
-                    let delta = circularDelta(for: index)
-                    let x = CGFloat(delta) * spacing
-                    if abs(x) < maxOffset {
-                        sliderIcon(category, isCenter: delta == 0)
-                            .offset(x: x)
-                            .zIndex(delta == 0 ? 100 : Double(40 - abs(delta)))
-                    }
+    private var gallery: some View {
+#if os(watchOS)
+        VStack(spacing: 6) {
+            CategoryGallery(
+                selection: $selected,
+                hint: "Tap to save",
+                onConfirm: { category in
+                    Task { await save(category) }
                 }
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 12)
-                    .onEnded { value in
-                        moveSelection(by: Int((-value.translation.width / spacing).rounded()))
-                    }
             )
-        }
-        .frame(height: centerSize + 8)
-        .frame(maxWidth: .infinity)
-        .animation(.snappy(duration: 0.22), value: selectedCategory)
-        .accessibilityLabel(selectedCategory.label)
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: moveSelection(by: 1)
-            case .decrement: moveSelection(by: -1)
-            @unknown default: break
+            Button("Cancel") {
+                pickerVisible = false
             }
+            .font(.caption.weight(.semibold))
+            .buttonStyle(.bordered)
+            .tint(.white)
+            .accessibilityLabel("Cancel")
         }
-    }
-
-    private func sliderIcon(_ category: PinCategory, isCenter: Bool) -> some View {
-        let size = isCenter ? centerSize : peekSize
-        return Button {
-            if isCenter {
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.black.opacity(0.72))
+#else
+        CategoryGallery(
+            selection: $selected,
+            hint: "Tap to save",
+            showsChrome: true,
+            onConfirm: { category in
                 Task { await save(category) }
-            } else {
-                selected = category
-                PinoHaptics.click()
             }
-        } label: {
-            Text(category.emoji)
-                .font(.system(size: size * 0.5))
-                .frame(width: size, height: size)
-                .background(isCenter ? Color.pino : Color.white.opacity(0.18), in: Circle())
-                .shadow(color: isCenter ? .black.opacity(0.35) : .clear, radius: 8, y: 3)
-                .opacity(isCenter ? 1 : 0.72)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(category.label)
-    }
-
-    private func heading(to pin: Pin) -> Angle? {
-        guard let user = location.location, let heading = location.currentHeading else { return nil }
-        let bearing = GeoMath.bearing(from: user.coordinate, to: pin.coordinate)
-        return .degrees(bearing - heading)
+        )
+#endif
     }
 
     private func handleIconTap(_ pin: Pin) {
@@ -263,7 +204,11 @@ struct SaveMapScreen: View {
             route = nil
             return
         }
+#if os(watchOS)
+        Task { await save(.place) }
+#else
         showPicker()
+#endif
     }
 
     private func showPicker() {
@@ -272,9 +217,18 @@ struct SaveMapScreen: View {
         PinoHaptics.click()
     }
 
+    private func recenter() {
+        if let user = location.location {
+            camera = PinoMaps.userCamera(user.coordinate)
+        } else {
+            camera = .userLocation(fallback: .automatic)
+        }
+        PinoHaptics.click()
+    }
+
     private func loadRoute() async {
         guard let pin = findPin, let origin = location.location else { return }
-        if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30, route != nil {
+        if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
             return
         }
         lastRoutedFrom = origin
@@ -283,6 +237,8 @@ struct SaveMapScreen: View {
         route = found
         if let found {
             camera = PinoMaps.camera(for: found)
+        } else {
+            camera = .region(PinoMaps.region(containing: [origin.coordinate, pin.coordinate]))
         }
     }
 
@@ -295,6 +251,9 @@ struct SaveMapScreen: View {
             isSaving = false
             pickerVisible = false
             PinoHaptics.success()
+#if os(watchOS)
+            environment.showPinsList = true
+#endif
         } catch {
             isSaving = false
             PinoHaptics.failure()
@@ -306,40 +265,34 @@ struct SaveMapScreen: View {
 struct FindHUD: View {
     let pin: Pin
     var route: MKRoute?
-    var heading: Angle?
     @EnvironmentObject private var location: LocationService
 
-    var body: some View {
-        VStack {
-            HStack(spacing: 8) {
-                if let heading {
-                    Image(systemName: "location.north.fill")
-                        .rotationEffect(heading)
-                        .animation(.easeInOut(duration: 0.2), value: heading)
-                }
-                Text(pin.symbol)
-                    .font(.title3)
-                if let route {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(Formatters.distance(route.distance))
-                            .font(.headline)
-                        Text(Formatters.duration(route.expectedTravelTime))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                } else if let distance = location.distance(to: pin) {
-                    Text(Formatters.distance(distance))
-                        .font(.headline)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial, in: Capsule())
-            .padding(.horizontal, 8)
-            Spacer()
+    private var line: String {
+        if let route {
+            let distance = Formatters.distance(route.distance)
+            let time = Formatters.duration(route.expectedTravelTime)
+            return time.isEmpty ? distance : "\(distance) · \(time)"
         }
-        .allowsHitTesting(false)
+        if let distance = location.distance(to: pin) {
+            return Formatters.distance(distance)
+        }
+        return ""
+    }
+
+    var body: some View {
+        if !line.isEmpty {
+            Text(line)
+#if os(watchOS)
+                .font(.caption2.weight(.semibold))
+#else
+                .font(.caption.weight(.semibold))
+#endif
+                .monospacedDigit()
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(.ultraThinMaterial, in: Capsule())
+                .allowsHitTesting(false)
+        }
     }
 }
 
@@ -347,6 +300,7 @@ struct WayfindingBanner: View {
     let pin: Pin
     var route: MKRoute?
     @EnvironmentObject private var location: LocationService
+    @State private var lastWrongPulse: Date?
 
     private var delta: Double? {
         guard let user = location.location else { return nil }
@@ -362,10 +316,36 @@ struct WayfindingBanner: View {
                 strip(edge: edge, color: correct ? Color.pino : .red, in: geo.size)
                     .animation(.easeInOut(duration: 0.2), value: edge)
                     .animation(.easeInOut(duration: 0.2), value: correct)
+                    .onChange(of: correct) { _, isCorrect in
+                        if isCorrect {
+                            lastWrongPulse = nil
+                        } else {
+                            pulseWrong()
+                        }
+                    }
+                    .onChange(of: location.heading?.timestamp) { _, _ in
+                        guard !correct else { return }
+                        pulseWrongIfNeeded()
+                    }
+                    .onAppear {
+                        if !correct { pulseWrong() }
+                    }
             }
         }
         .allowsHitTesting(false)
         .ignoresSafeArea()
+    }
+
+    private func pulseWrong() {
+        lastWrongPulse = Date()
+        PinoHaptics.wrongWay()
+    }
+
+    private func pulseWrongIfNeeded() {
+        if let lastWrongPulse, Date().timeIntervalSince(lastWrongPulse) < 2.8 {
+            return
+        }
+        pulseWrong()
     }
 
     private func strip(edge: Edge, color: Color, in size: CGSize) -> some View {

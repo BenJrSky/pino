@@ -23,10 +23,7 @@ struct FindView: View {
         self.showsManagement = showsManagement
         _draft = State(initialValue: pin)
         _findPin = State(initialValue: pin)
-        _camera = State(initialValue: .region(MKCoordinateRegion(
-            center: pin.coordinate,
-            span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004)
-        )))
+        _camera = State(initialValue: PinoMaps.userCamera(pin.coordinate))
     }
 
     private var livePin: Pin {
@@ -34,12 +31,6 @@ struct FindView: View {
             return store.pins.first(where: { $0.id == findPin.id }) ?? findPin
         }
         return store.pins.first(where: { $0.id == pin.id }) ?? draft
-    }
-
-    private var heading: Angle? {
-        guard let user = location.location, let heading = location.currentHeading else { return nil }
-        let bearing = GeoMath.bearing(from: user.coordinate, to: livePin.coordinate)
-        return .degrees(bearing - heading)
     }
 
 #if os(watchOS)
@@ -62,57 +53,51 @@ struct FindView: View {
                             )
                     }
                 }
-                if let findPin {
-                    if let route {
-                        MapPolyline(route.polyline)
-                            .stroke(Color.route, lineWidth: 6)
-                    } else if let user = location.location {
-                        MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
-                            .stroke(Color.route.opacity(0.7), style: StrokeStyle(lineWidth: 4, dash: [8, 6]))
-                    }
+                if let route {
+                    MapPolyline(route.polyline)
+                        .stroke(Color.route, lineWidth: 6)
+                } else if let findPin, let user = location.location {
+                    MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
+                        .stroke(Color.route.opacity(0.75), style: StrokeStyle(lineWidth: 5, dash: [10, 7]))
                 }
             }
             .pinoMapStyle()
-#if os(iOS)
-            .mapControls {
-                MapUserLocationButton()
-                MapCompass()
-            }
-#else
             .mapControlVisibility(.hidden)
-#endif
             .ignoresSafeArea()
             .onTapGesture(perform: handleMapTap)
 
             if let findPin {
                 WayfindingBanner(pin: findPin, route: route)
-                FindHUD(pin: livePin, route: route, heading: heading)
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if showsManagement {
-                HStack {
-                    NavigationLink("Details") {
-                        PinEditView(pin: livePin)
+
+            VStack {
+                Spacer()
+                HStack(alignment: .center, spacing: 8) {
+                    if findPin != nil {
+                        FindHUD(pin: livePin, route: route)
+                        Spacer(minLength: 4)
+                    } else {
+                        Spacer(minLength: 0)
                     }
-                    Button("Delete", role: .destructive) {
-                        confirmDelete = true
-                    }
+                    RecenterButton(action: recenter)
                 }
-                .font(.caption)
-                .padding(.horizontal, 8)
-                .padding(.top, 6)
-                .background(.ultraThinMaterial)
             }
+#if os(watchOS)
+            .padding(6)
+#else
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
+#endif
         }
-        .navigationTitle("Find")
-        .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Delete this pin?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) {
+        .modifier(FindMapChrome(
+            showsManagement: showsManagement,
+            livePin: livePin,
+            confirmDelete: $confirmDelete,
+            onDelete: {
                 store.delete(livePin)
                 dismiss()
             }
-        }
+        ))
         .onAppear {
             location.start()
         }
@@ -175,9 +160,18 @@ struct FindView: View {
         route = nil
     }
 
+    private func recenter() {
+        if let user = location.location {
+            camera = PinoMaps.userCamera(user.coordinate)
+        } else {
+            camera = .userLocation(fallback: .automatic)
+        }
+        PinoHaptics.click()
+    }
+
     private func loadRoute() async {
         guard let findPin, let origin = location.location else { return }
-        if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30, route != nil {
+        if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
             return
         }
         lastRoutedFrom = origin
@@ -185,7 +179,45 @@ struct FindView: View {
         route = found
         if let found {
             camera = PinoMaps.camera(for: found)
+        } else {
+            camera = .region(PinoMaps.region(containing: [origin.coordinate, findPin.coordinate]))
         }
+    }
+}
+
+private struct FindMapChrome: ViewModifier {
+    var showsManagement: Bool
+    var livePin: Pin
+    @Binding var confirmDelete: Bool
+    var onDelete: () -> Void
+
+    func body(content: Content) -> some View {
+#if os(watchOS)
+        content
+#else
+        content
+            .safeAreaInset(edge: .bottom) {
+                if showsManagement {
+                    HStack {
+                        NavigationLink("Details") {
+                            PinEditView(pin: livePin)
+                        }
+                        Button("Delete", role: .destructive) {
+                            confirmDelete = true
+                        }
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
+                    .background(.ultraThinMaterial)
+                }
+            }
+            .navigationTitle("Find")
+            .navigationBarTitleDisplayMode(.inline)
+            .confirmationDialog("Delete this pin?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button("Delete", role: .destructive, action: onDelete)
+            }
+#endif
     }
 }
 
@@ -202,10 +234,31 @@ struct PinEditView: View {
     }
 
     var body: some View {
+        content
+            .navigationTitle("Details")
+            .onDisappear(perform: save)
+            .onChange(of: name) { _, _ in save() }
+            .onChange(of: category) { _, _ in save() }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+#if os(watchOS)
+        VStack(alignment: .leading, spacing: 6) {
+            TextField("Name", text: $name)
+            if let address = current.address {
+                Text(address)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+#else
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 TextField("Name", text: $name)
                 CategoryPicker(selection: $category)
+                    .id(pin.id)
                 if let address = current.address {
                     Text(address)
                         .font(.caption2)
@@ -216,10 +269,7 @@ struct PinEditView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Details")
-        .onDisappear(perform: save)
-        .onChange(of: name) { _, _ in save() }
-        .onChange(of: category) { _, _ in save() }
+#endif
     }
 
     private var current: Pin {
