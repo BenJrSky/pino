@@ -1,0 +1,100 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "PINO"
+          }
+        }
+      }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pino"
+          }
+        }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location Always and When In Use Usage Description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO nutzt deinen Standort, um dich zu warnen, wenn du in der Nähe eines gespeicherten Punkts bist."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO uses your location to alert you when you are near a saved pin."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO usa tu ubicación para avisarte cuando estás cerca de un punto guardado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO utilise ta position pour t’alerter quand tu es près d’un point enregistré."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO usa la posizione per avvisarti quando sei vicino a un punto salvato."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription" : {
+      "comment" : "Privacy - Location When In Use Usage Description",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO nutzt deinen Standort, um Punkte zu speichern und wiederzufinden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO uses your location to save and find your pins."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO usa tu ubicación para guardar y encontrar tus puntos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO utilise ta position pour enregistrer et retrouver tes points."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PINO usa la posizione per salvare e ritrovare i tuoi punti."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

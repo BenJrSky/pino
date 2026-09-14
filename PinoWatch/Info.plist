@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>PINO</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>PINO usa la posizione per salvare e ritrovare i tuoi punti.</string>
+	<key>WKApplication</key>
+	<true/>
+	<key>WKCompanionAppBundleIdentifier</key>
+	<string>it.devben.pino</string>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
+	<true/>
+</dict>
+</plist>
