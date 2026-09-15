@@ -21,11 +21,16 @@ struct PinsScreen: View {
         NavigationStack {
             Group {
                 if store.pins.isEmpty {
-                    ContentUnavailableView(
-                        "Pin it. Find it.",
-                        systemImage: "mappin.and.ellipse",
-                        description: Text("Tap the map to save a pin.")
-                    )
+                    ContentUnavailableView {
+                        Label {
+                            Text("A pin.\nAnd you're back.")
+                                .multilineTextAlignment(.center)
+                        } icon: {
+                            Image(systemName: "mappin.and.ellipse")
+                        }
+                    } description: {
+                        Text("Tap the map.")
+                    }
                 } else {
                     List {
                         ForEach(pins) { pin in
@@ -34,7 +39,7 @@ struct PinsScreen: View {
                                     detailPin = pin
                                 } label: {
                                     HStack(spacing: 12) {
-                                        SavedPinMark(category: pin.category, diameter: 32)
+                                        SavedPinMark(category: pin.category, skinTone: pin.skinTone ?? .none, diameter: 32)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(pin.displayName)
                                                 .font(.headline)
@@ -57,12 +62,14 @@ struct PinsScreen: View {
                                 .buttonStyle(.plain)
                                 .accessibilityLabel(pin.displayName)
 
+                                TravelModeButton(pin: pin)
+
                                 Button {
                                     environment.find(pin)
                                 } label: {
                                     Image(systemName: "location.north.line.fill")
                                         .font(.body.weight(.semibold))
-                                        .foregroundStyle(Color.route)
+                                        .foregroundStyle(.white)
                                         .frame(width: 44, height: 44)
                                         .contentShape(Rectangle())
                                 }

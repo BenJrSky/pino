@@ -18,6 +18,7 @@ struct RootView: View {
                 .tag(2)
         }
         .onAppear {
+            if ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("-pino-tab-") }) { return }
             environment.selectedTab = 0
         }
         .onChange(of: store.pins) { _, _ in environment.refreshProximity() }

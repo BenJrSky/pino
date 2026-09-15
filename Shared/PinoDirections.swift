@@ -1,14 +1,20 @@
 @preconcurrency import MapKit
 
 enum PinoDirections {
-    nonisolated static func route(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) async -> MKRoute? {
-        if let automobile = await calculate(from: from, to: to, type: .automobile) {
-            return automobile
+    nonisolated static func route(
+        from: CLLocationCoordinate2D,
+        to: CLLocationCoordinate2D,
+        mode: TravelMode
+    ) async -> MKRoute? {
+        await calculate(from: from, to: to, type: transportType(mode))
+    }
+
+    nonisolated private static func transportType(_ mode: TravelMode) -> MKDirectionsTransportType {
+        switch mode {
+        case .walking: .walking
+        case .automobile: .automobile
+        case .transit: .transit
         }
-        if let walking = await calculate(from: from, to: to, type: .walking) {
-            return walking
-        }
-        return await calculate(from: from, to: to, type: .any)
     }
 
     nonisolated private static func calculate(

@@ -26,8 +26,9 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
     override init() {
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 4
+        manager.distanceFilter = 2
         manager.headingFilter = 2
+        manager.activityType = .fitness
         status = manager.authorizationStatus
         super.init()
         manager.delegate = self

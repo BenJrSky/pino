@@ -1,5 +1,49 @@
 import SwiftUI
 
+private struct CategoryLoopItem: Hashable {
+    let copy: Int
+    let category: PinCategory
+}
+
+private enum CategoryLoop {
+    static let copies = 5
+    static var middle: Int { copies / 2 }
+
+    static func items(_ categories: [PinCategory]) -> [CategoryLoopItem] {
+        (0..<copies).flatMap { copy in
+            categories.map { CategoryLoopItem(copy: copy, category: $0) }
+        }
+    }
+
+    static func middleItem(for category: PinCategory) -> CategoryLoopItem {
+        CategoryLoopItem(copy: middle, category: category)
+    }
+
+    static func step(from item: CategoryLoopItem, to category: PinCategory, categories: [PinCategory]) -> CategoryLoopItem {
+        let count = categories.count
+        guard count > 0,
+              let origin = categories.firstIndex(of: item.category),
+              let target = categories.firstIndex(of: category)
+        else { return middleItem(for: category) }
+        if origin == target { return item }
+        var delta = target - origin
+        if delta > count / 2 { delta -= count }
+        if delta < -count / 2 { delta += count }
+        return clamped(flat: item.copy * count + origin + delta, categories: categories)
+    }
+
+    static func recentered(_ item: CategoryLoopItem) -> CategoryLoopItem {
+        item.copy == 0 || item.copy == copies - 1 ? middleItem(for: item.category) : item
+    }
+
+    private static func clamped(flat: Int, categories: [PinCategory]) -> CategoryLoopItem {
+        let count = max(categories.count, 1)
+        let total = copies * count
+        let index = ((flat % total) + total) % total
+        return CategoryLoopItem(copy: index / count, category: categories[index % count])
+    }
+}
+
 struct CategoryPicker: View {
     @Binding var selection: PinCategory?
 
@@ -66,8 +110,7 @@ struct CategoryGallery: View {
             Button {
                 confirmOrSelect(category)
             } label: {
-                Text(category.emoji)
-                    .font(.system(size: 40))
+                CategoryEmoji(category: category, fontSize: 40, swipeAxis: .horizontal)
                     .frame(width: centerSize, height: centerSize)
                     .background(Circle().fill(Color.pino))
             }
@@ -101,7 +144,7 @@ struct CategoryGallery: View {
             through: Double(max(categories.count - 1, 0)),
             by: 1,
             sensitivity: .medium,
-            isContinuous: false,
+            isContinuous: true,
             isHapticFeedbackEnabled: false
         )
         .onChange(of: selection) { _, _ in
@@ -116,19 +159,23 @@ struct CategoryGallery: View {
         Binding(
             get: { Double(categories.firstIndex(of: selection) ?? 0) },
             set: { raw in
-                let index = min(max(Int(raw.rounded()), 0), categories.count - 1)
+                let count = categories.count
+                guard count > 0 else { return }
+                var index = Int(raw.rounded()) % count
+                if index < 0 { index += count }
                 selection = categories[index]
             }
         )
     }
 
     private func nudgeSelection(_ direction: AccessibilityAdjustmentDirection) {
-        guard let index = categories.firstIndex(of: selection) else { return }
+        let count = categories.count
+        guard count > 0, let index = categories.firstIndex(of: selection) else { return }
         switch direction {
         case .increment:
-            if index + 1 < categories.count { selection = categories[index + 1] }
+            selection = categories[(index + 1) % count]
         case .decrement:
-            if index > 0 { selection = categories[index - 1] }
+            selection = categories[(index - 1 + count) % count]
         @unknown default:
             break
         }
@@ -177,12 +224,13 @@ struct CategoryGallery: View {
     }
 
     private func nudgeSelection(_ direction: AccessibilityAdjustmentDirection) {
-        guard let index = categories.firstIndex(of: selection) else { return }
+        let count = categories.count
+        guard count > 0, let index = categories.firstIndex(of: selection) else { return }
         switch direction {
         case .increment:
-            if index + 1 < categories.count { selection = categories[index + 1] }
+            selection = categories[(index + 1) % count]
         case .decrement:
-            if index > 0 { selection = categories[index - 1] }
+            selection = categories[(index - 1 + count) % count]
         @unknown default:
             break
         }
@@ -280,8 +328,7 @@ private struct WatchCategoryItem: View {
 
     var body: some View {
         Button(action: onTap) {
-            Text(category.emoji)
-                .font(.system(size: size * 0.52))
+            CategoryEmoji(category: category, fontSize: size * 0.52, swipeAxis: .vertical)
                 .frame(width: card, height: 44)
                 .background {
                     Circle()
@@ -305,7 +352,7 @@ private struct PhoneCategoryScroll: View {
     let categories: [PinCategory]
     var centerSize: CGFloat
     var onConfirm: ((PinCategory) -> Void)?
-    @State private var positioned: PinCategory
+    @State private var positioned: CategoryLoopItem
     @State private var canSync = false
 
     init(
@@ -318,7 +365,7 @@ private struct PhoneCategoryScroll: View {
         self.categories = categories
         self.centerSize = centerSize
         self.onConfirm = onConfirm
-        _positioned = State(initialValue: selection.wrappedValue)
+        _positioned = State(initialValue: CategoryLoop.middleItem(for: selection.wrappedValue))
     }
 
     var body: some View {
@@ -326,52 +373,76 @@ private struct PhoneCategoryScroll: View {
             if geo.size.width > 32 {
                 let card = min(max(geo.size.width * 0.34, 92), 128)
                 let inset = max((geo.size.width - card) / 2, 0)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 14) {
-                        ForEach(categories, id: \.self) { category in
-                            PhoneCategoryItem(
-                                category: category,
-                                card: card,
-                                centerSize: centerSize,
-                                isSelected: category == selection,
-                                onTap: { tap(category) }
-                            )
-                            .id(category)
+                let items = CategoryLoop.items(categories)
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(items, id: \.self) { item in
+                                PhoneCategoryItem(
+                                    category: item.category,
+                                    card: card,
+                                    centerSize: centerSize,
+                                    isSelected: item.category == selection,
+                                    onTap: { tap(item.category) }
+                                )
+                                .id(item)
+                            }
                         }
+                        .scrollTargetLayout()
                     }
-                    .scrollTargetLayout()
+                    .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+                    .scrollPosition(id: scrollID, anchor: .center)
+                    .contentMargins(.horizontal, inset, for: .scrollContent)
+                    .task { await reveal(proxy) }
                 }
-                .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-                .scrollPosition(id: scrollID, anchor: .center)
-                .contentMargins(.horizontal, inset, for: .scrollContent)
             }
         }
-        .task { await reveal() }
         .onChange(of: selection) { _, value in
-            guard positioned != value else { return }
-            positioned = value
+            guard canSync, positioned.category != value else { return }
+            apply(CategoryLoop.step(from: positioned, to: value, categories: categories))
         }
     }
 
-    private var scrollID: Binding<PinCategory?> {
+    private var scrollID: Binding<CategoryLoopItem?> {
         Binding(
             get: { positioned },
             set: { newValue in
                 guard canSync, let newValue else { return }
-                positioned = newValue
-                if newValue != selection {
-                    selection = newValue
+                if newValue.category != selection {
+                    selection = newValue.category
                 }
+                apply(newValue)
             }
         )
     }
 
-    private func reveal() async {
-        positioned = selection
-        try? await Task.sleep(for: .milliseconds(80))
-        positioned = selection
-        try? await Task.sleep(for: .milliseconds(220))
-        positioned = selection
+    private func apply(_ item: CategoryLoopItem) {
+        let target = CategoryLoop.recentered(item)
+        guard target != positioned else { return }
+        if target.copy != item.copy {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                positioned = target
+            }
+        } else {
+            positioned = target
+        }
+    }
+
+    private func reveal(_ proxy: ScrollViewProxy) async {
+        canSync = false
+        let target = CategoryLoop.middleItem(for: selection)
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            positioned = target
+        }
+        proxy.scrollTo(target, anchor: .center)
+        try? await Task.sleep(for: .milliseconds(50))
+        proxy.scrollTo(target, anchor: .center)
+        try? await Task.sleep(for: .milliseconds(200))
+        proxy.scrollTo(target, anchor: .center)
         canSync = true
     }
 
@@ -380,7 +451,7 @@ private struct PhoneCategoryScroll: View {
             onConfirm(category)
         } else {
             canSync = true
-            positioned = category
+            apply(CategoryLoop.step(from: positioned, to: category, categories: categories))
             selection = category
         }
     }
@@ -395,8 +466,7 @@ private struct PhoneCategoryItem: View {
 
     var body: some View {
         Button(action: onTap) {
-            Text(category.emoji)
-                .font(.system(size: card * (isSelected ? 0.46 : 0.38)))
+            CategoryEmoji(category: category, fontSize: card * (isSelected ? 0.46 : 0.38), swipeAxis: .vertical)
                 .frame(width: card, height: centerSize)
                 .background {
                     Circle()
@@ -419,3 +489,52 @@ private struct PhoneCategoryItem: View {
     }
 }
 #endif
+
+private struct CategoryEmoji: View {
+    let category: PinCategory
+    var fontSize: CGFloat
+    var swipeAxis: Axis
+    @EnvironmentObject private var settings: SettingsStore
+
+    var body: some View {
+        Text(category.emoji(tone: category.takesSkinTone ? settings.skinTone : .none))
+            .font(.system(size: fontSize))
+            .overlay(alignment: .top) {
+                if category.takesSkinTone {
+                    Color.clear
+                        .frame(height: fontSize * 0.52)
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(swipe)
+                }
+            }
+            .accessibilityAdjustableAction(adjust)
+    }
+
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 14)
+            .onEnded { value in
+                switch swipeAxis {
+                case .vertical:
+                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
+                    shift(value.translation.height < 0 ? 1 : -1)
+                case .horizontal:
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    shift(value.translation.width < 0 ? 1 : -1)
+                }
+            }
+    }
+
+    private func adjust(_ direction: AccessibilityAdjustmentDirection) {
+        guard category.takesSkinTone else { return }
+        switch direction {
+        case .increment: shift(1)
+        case .decrement: shift(-1)
+        @unknown default: break
+        }
+    }
+
+    private func shift(_ delta: Int) {
+        settings.skinTone = settings.skinTone.advanced(by: delta)
+        PinoHaptics.click()
+    }
+}

@@ -4,8 +4,10 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>PINO</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>PINO usa la posizione per salvare e ritrovare i tuoi punti.</string>
+	<string>PINO uses your location to save and find your pins.</string>
 	<key>WKApplication</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>

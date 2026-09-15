@@ -2,7 +2,7 @@ import MapKit
 import SwiftUI
 
 extension Color {
-    static let pino = Color(red: 0.32, green: 0.76, blue: 0.50)
+    static let pino = Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)
     static let route = Color(red: 0.0, green: 0.48, blue: 1.0)
 }
 
@@ -51,6 +51,38 @@ enum PinoMaps {
         rect = rect.insetBy(dx: -pad, dy: -pad)
         return .rect(rect)
     }
+
+    static func overview(user: CLLocationCoordinate2D, pin: CLLocationCoordinate2D, route: MKRoute?) -> MapCameraPosition {
+        if let route {
+            return camera(for: route)
+        }
+        return .region(region(containing: [user, pin]))
+    }
+
+    static func firstPerson(user: CLLocation, heading: Double?) -> MapCameraPosition {
+        let facing = heading ?? (user.course >= 0 ? user.course : 0)
+        let look = ahead(from: user.coordinate, heading: facing, meters: 18)
+#if os(watchOS)
+        let distance: CLLocationDistance = 90
+        let pitch: Double = 55
+#else
+        let distance: CLLocationDistance = 120
+        let pitch: Double = 68
+#endif
+        return .camera(MapCamera(
+            centerCoordinate: look,
+            distance: distance,
+            heading: facing,
+            pitch: pitch
+        ))
+    }
+
+    static func ahead(from: CLLocationCoordinate2D, heading: Double, meters: CLLocationDistance) -> CLLocationCoordinate2D {
+        let radians = heading * .pi / 180
+        let north = meters * cos(radians) / 111_320
+        let east = meters * sin(radians) / (111_320 * max(cos(from.latitude * .pi / 180), 0.01))
+        return CLLocationCoordinate2D(latitude: from.latitude + north, longitude: from.longitude + east)
+    }
 }
 
 enum PinoWayfinding {
@@ -97,14 +129,66 @@ enum PinoWayfinding {
         if magnitude >= 135 { return .bottom }
         return delta > 0 ? .trailing : .leading
     }
+
+    static func hasArrived(user: CLLocation, pin: Pin) -> Bool {
+        let accuracy = user.horizontalAccuracy
+        guard accuracy > 0, accuracy < 35 else { return false }
+        let meters = GeoMath.distance(from: user.coordinate, to: pin.coordinate)
+        return meters <= 10 && meters + accuracy / 2 <= 18
+    }
+
+    static func spokenCue(delta: Double) -> String {
+        let magnitude = abs(delta)
+        if magnitude <= 35 { return String(localized: "Straight ahead") }
+        if magnitude >= 135 { return String(localized: "Turn around") }
+        return delta > 0 ? String(localized: "Turn right") : String(localized: "Turn left")
+    }
+
+    static func upcomingStep(in route: MKRoute, from user: CLLocationCoordinate2D) -> (instruction: String, remaining: CLLocationDistance)? {
+        let steps = route.steps
+        guard !steps.isEmpty else { return nil }
+        var bestIndex = 0
+        var bestDist = CLLocationDistance.greatestFiniteMagnitude
+        for (index, step) in steps.enumerated() {
+            let count = step.polyline.pointCount
+            guard count > 0 else { continue }
+            var coords = Array(repeating: kCLLocationCoordinate2DInvalid, count: count)
+            step.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: count))
+            for coordinate in coords where coordinate.latitude.isFinite {
+                let distance = GeoMath.distance(from: user, to: coordinate)
+                if distance < bestDist {
+                    bestDist = distance
+                    bestIndex = index
+                }
+            }
+        }
+        var index = bestIndex
+        if let finish = end(of: steps[index]), GeoMath.distance(from: user, to: finish) < 18, index + 1 < steps.count {
+            index += 1
+        }
+        let step = steps[index]
+        let instruction = step.instructions.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !instruction.isEmpty else { return nil }
+        let remaining = end(of: step).map { GeoMath.distance(from: user, to: $0) } ?? step.distance
+        return (instruction, remaining)
+    }
+
+    private static func end(of step: MKRoute.Step) -> CLLocationCoordinate2D? {
+        let count = step.polyline.pointCount
+        guard count > 0 else { return nil }
+        var coords = Array(repeating: kCLLocationCoordinate2DInvalid, count: count)
+        step.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: count))
+        return coords.last
+    }
 }
 
 struct SavedPinMark: View {
     var category: PinCategory?
+    var skinTone: SkinTone = .none
     var diameter: CGFloat = 28
 
     var body: some View {
-        Text(category?.emoji ?? "📍")
+        Text(category?.emoji(tone: skinTone) ?? "📍")
             .font(.system(size: diameter * 0.52))
             .frame(width: diameter, height: diameter)
             .background(Color.pino, in: Circle())
@@ -146,6 +230,37 @@ extension View {
     }
 }
 
+struct GuidanceButton: View {
+    @EnvironmentObject private var settings: SettingsStore
+
+    var body: some View {
+        Button {
+            settings.guidance.toggle()
+            if settings.guidance {
+                PinoHaptics.click()
+            } else {
+                VoiceGuide.stop()
+            }
+        } label: {
+            Image(systemName: settings.guidance ? "speaker.wave.2.fill" : "speaker.slash.fill")
+#if os(watchOS)
+                .font(.caption.weight(.semibold))
+                .frame(width: 32, height: 32)
+#else
+                .font(.body.weight(.semibold))
+                .frame(width: 44, height: 44)
+#endif
+                .foregroundStyle(.black.opacity(0.7))
+                .background(.white.opacity(0.92), in: Circle())
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
+        .accessibilityLabel("Voice and vibration")
+        .accessibilityValue(settings.guidance ? "On" : "Off")
+    }
+}
+
 struct RecenterButton: View {
     let action: () -> Void
 
@@ -164,6 +279,39 @@ struct RecenterButton: View {
                 .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
         }
         .buttonStyle(.plain)
+        .contentShape(Circle())
         .accessibilityLabel("My location")
+    }
+}
+
+struct TravelModeButton: View {
+    let pin: Pin
+    @EnvironmentObject private var store: PinStore
+
+    var body: some View {
+        Button {
+            var updated = pin
+            updated.travelMode = pin.routeMode.next
+            store.update(updated)
+            PinoHaptics.click()
+        } label: {
+            Image(systemName: pin.routeMode.symbol)
+#if os(watchOS)
+                .font(.caption.weight(.semibold))
+                .frame(width: 28, height: 28)
+#else
+                .font(.body.weight(.semibold))
+                .frame(width: 44, height: 44)
+#endif
+                .foregroundStyle(.white)
+                .contentShape(Rectangle())
+        }
+#if os(watchOS)
+        .buttonStyle(.plain)
+#else
+        .buttonStyle(.borderless)
+#endif
+        .accessibilityLabel(pin.routeMode.label)
+        .accessibilityHint("Travel mode")
     }
 }

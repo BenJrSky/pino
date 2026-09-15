@@ -10,14 +10,26 @@ final class SettingsStore: ObservableObject {
         didSet { UserDefaults.standard.set(proximityAlerts, forKey: Keys.proximity) }
     }
 
+    @Published var guidance: Bool {
+        didSet { UserDefaults.standard.set(guidance, forKey: Keys.guidance) }
+    }
+
+    @Published var skinTone: SkinTone {
+        didSet { UserDefaults.standard.set(skinTone.rawValue, forKey: Keys.skinTone) }
+    }
+
     init() {
         retention = RetentionPeriod(rawValue: UserDefaults.standard.string(forKey: Keys.retention) ?? "") ?? .forever
         proximityAlerts = UserDefaults.standard.bool(forKey: Keys.proximity)
+        guidance = UserDefaults.standard.object(forKey: Keys.guidance) as? Bool ?? true
+        skinTone = SkinTone(rawValue: UserDefaults.standard.integer(forKey: Keys.skinTone)) ?? .none
     }
 
     private enum Keys {
         static let retention = "pino.retention"
         static let proximity = "pino.proximityAlerts"
+        static let guidance = "pino.guidance"
+        static let skinTone = "pino.skinTone"
     }
 }
 
@@ -61,7 +73,7 @@ final class PinStore: ObservableObject {
     }
 
     func delete(_ pin: Pin) {
-        pins.removeAll { $0.id == pin.id }
+        pins = pins.filter { $0.id != pin.id }
         if !deletedIds.contains(pin.id) {
             deletedIds.append(pin.id)
             if deletedIds.count > 200 {

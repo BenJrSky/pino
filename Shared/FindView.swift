@@ -45,7 +45,7 @@ struct FindView: View {
                 UserAnnotation()
                 ForEach(store.pins) { item in
                     Annotation("", coordinate: item.coordinate) {
-                        SavedPinMark(category: item.category, diameter: markSize)
+                        SavedPinMark(category: item.category, skinTone: item.skinTone ?? .none, diameter: markSize)
                             .scaleEffect(item.id == findPin?.id ? 1.18 : 1)
                             .mapGestures(
                                 onFind: { handleIconTap(item) },
@@ -64,30 +64,42 @@ struct FindView: View {
             .pinoMapStyle()
             .mapControlVisibility(.hidden)
             .ignoresSafeArea()
+#if os(watchOS)
             .onTapGesture(perform: handleMapTap)
+#endif
 
             if let findPin {
                 WayfindingBanner(pin: findPin, route: route)
+                FindGuidance(pin: findPin, route: route)
             }
 
-            VStack {
+            VStack(spacing: 0) {
+#if os(iOS)
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: handleMapTap)
+#else
                 Spacer()
+                    .allowsHitTesting(false)
+#endif
                 HStack(alignment: .center, spacing: 8) {
                     if findPin != nil {
                         FindHUD(pin: livePin, route: route)
                         Spacer(minLength: 4)
+                        GuidanceButton()
                     } else {
                         Spacer(minLength: 0)
                     }
                     RecenterButton(action: recenter)
                 }
-            }
+                .contentShape(Rectangle())
 #if os(watchOS)
-            .padding(6)
+                .padding(6)
 #else
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
 #endif
+            }
         }
         .modifier(FindMapChrome(
             showsManagement: showsManagement,
@@ -103,6 +115,12 @@ struct FindView: View {
         }
         .task {
             await loadRoute()
+        }
+        .onChange(of: store.pins) { _, pins in
+            guard let id = findPin?.id, !pins.contains(where: { $0.id == id }) else { return }
+            findPin = nil
+            route = nil
+            VoiceGuide.stop()
         }
         .onChange(of: findPin?.id) { _, _ in
             lastRoutedFrom = nil
@@ -170,12 +188,18 @@ struct FindView: View {
     }
 
     private func loadRoute() async {
-        guard let findPin, let origin = location.location else { return }
+        guard let findPin,
+              store.pins.contains(where: { $0.id == findPin.id }),
+              let origin = location.location else { return }
         if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
             return
         }
         lastRoutedFrom = origin
-        let found = await PinoDirections.route(from: origin.coordinate, to: findPin.coordinate)
+        let found = await PinoDirections.route(
+            from: origin.coordinate,
+            to: findPin.coordinate,
+            mode: livePin.routeMode
+        )
         route = found
         if let found {
             camera = PinoMaps.camera(for: found)
@@ -224,6 +248,7 @@ private struct FindMapChrome: ViewModifier {
 struct PinEditView: View {
     let pin: Pin
     @EnvironmentObject private var store: PinStore
+    @EnvironmentObject private var settings: SettingsStore
     @State private var name: String
     @State private var category: PinCategory?
 
@@ -239,6 +264,14 @@ struct PinEditView: View {
             .onDisappear(perform: save)
             .onChange(of: name) { _, _ in save() }
             .onChange(of: category) { _, _ in save() }
+#if os(iOS)
+            .onAppear {
+                if current.category?.takesSkinTone == true {
+                    settings.skinTone = current.skinTone ?? .none
+                }
+            }
+            .onChange(of: settings.skinTone) { _, _ in save() }
+#endif
     }
 
     @ViewBuilder
@@ -281,6 +314,9 @@ struct PinEditView: View {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.name = trimmed.isEmpty ? nil : trimmed
         updated.category = category
+#if os(iOS)
+        updated.skinTone = category?.takesSkinTone == true ? settings.skinTone : nil
+#endif
         if updated != current {
             store.update(updated)
         }

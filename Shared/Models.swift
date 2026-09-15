@@ -5,7 +5,9 @@ enum PinCategory: String, Codable, CaseIterable, Identifiable {
     case car, motorcycle, scooter, bike, bus, train, taxi, boat, airplane, parking
     case restaurant, hamburger, pizza, iceCream, coffee, bar
     case hotel, home, work, beach, park, forest, mountain, lake, monument, camp
-    case luggage, keys, pet, pharmacy, hospital, gas, shop, gym, school
+    case luggage, keys, pet
+    case man, woman, boy, girl
+    case pharmacy, hospital, gas, shop, gym, school
     case place, other
 
     var id: String { rawValue }
@@ -41,6 +43,10 @@ enum PinCategory: String, Codable, CaseIterable, Identifiable {
         case .luggage: "🧳"
         case .keys: "🔑"
         case .pet: "🐶"
+        case .man: "👨"
+        case .woman: "👩"
+        case .boy: "👦"
+        case .girl: "👧"
         case .pharmacy: "💊"
         case .hospital: "🏥"
         case .gas: "⛽"
@@ -83,6 +89,10 @@ enum PinCategory: String, Codable, CaseIterable, Identifiable {
         case .luggage: String(localized: "Luggage")
         case .keys: String(localized: "Keys")
         case .pet: String(localized: "Pet")
+        case .man: String(localized: "Man")
+        case .woman: String(localized: "Woman")
+        case .boy: String(localized: "Boy")
+        case .girl: String(localized: "Girl")
         case .pharmacy: String(localized: "Pharmacy")
         case .hospital: String(localized: "Hospital")
         case .gas: String(localized: "Gas")
@@ -94,8 +104,53 @@ enum PinCategory: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    var takesSkinTone: Bool {
+        switch self {
+        case .man, .woman, .boy, .girl: true
+        default: false
+        }
+    }
+
+    func emoji(tone: SkinTone = .none) -> String {
+        takesSkinTone ? emoji + tone.modifier : emoji
+    }
+
     static var alphabetically: [PinCategory] {
-        allCases.sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+        let group: [PinCategory] = [.man, .woman, .boy, .girl]
+        let clustered = Set(group)
+        let rest = allCases.filter { !clustered.contains($0) }
+            .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
+        let anchor = group.map(\.label).min { $0.localizedStandardCompare($1) == .orderedAscending } ?? group[0].label
+        if let index = rest.firstIndex(where: { $0.label.localizedStandardCompare(anchor) == .orderedDescending }) {
+            return Array(rest[..<index]) + group + Array(rest[index...])
+        }
+        return rest + group
+    }
+}
+
+enum SkinTone: Int, Codable, CaseIterable {
+    case none
+    case light
+    case mediumLight
+    case medium
+    case mediumDark
+    case dark
+
+    var modifier: String {
+        switch self {
+        case .none: ""
+        case .light: "\u{1F3FB}"
+        case .mediumLight: "\u{1F3FC}"
+        case .medium: "\u{1F3FD}"
+        case .mediumDark: "\u{1F3FE}"
+        case .dark: "\u{1F3FF}"
+        }
+    }
+
+    func advanced(by delta: Int) -> SkinTone {
+        let all = Self.allCases
+        guard let index = all.firstIndex(of: self) else { return self }
+        return all[(index + delta + all.count) % all.count]
     }
 }
 
@@ -129,6 +184,36 @@ enum RetentionPeriod: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum TravelMode: String, Codable, CaseIterable, Identifiable {
+    case walking
+    case automobile
+    case transit
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .walking: String(localized: "Walk")
+        case .automobile: String(localized: "Drive")
+        case .transit: String(localized: "Transit")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .walking: "figure.walk"
+        case .automobile: "car.fill"
+        case .transit: "bus.fill"
+        }
+    }
+
+    var next: TravelMode {
+        let modes = Self.allCases
+        guard let index = modes.firstIndex(of: self) else { return .walking }
+        return modes[(index + 1) % modes.count]
+    }
+}
+
 struct Pin: Identifiable, Codable, Equatable, Hashable {
     var id: UUID
     var name: String?
@@ -136,6 +221,8 @@ struct Pin: Identifiable, Codable, Equatable, Hashable {
     var latitude: Double
     var longitude: Double
     var address: String?
+    var travelMode: TravelMode? = nil
+    var skinTone: SkinTone? = nil
     var createdAt: Date
     var updatedAt: Date
 
@@ -157,18 +244,23 @@ struct Pin: Identifiable, Codable, Equatable, Hashable {
     }
 
     var symbol: String {
-        category?.emoji ?? "📍"
+        category?.emoji(tone: skinTone ?? .none) ?? "📍"
     }
 
-    static func make(location: CLLocation, category: PinCategory? = nil) -> Pin {
+    var routeMode: TravelMode {
+        travelMode ?? .walking
+    }
+
+    static func make(location: CLLocation, category: PinCategory? = nil, skinTone: SkinTone = .none) -> Pin {
         let now = Date()
         return Pin(
             id: UUID(),
-            name: category?.label,
+            name: nil,
             category: category,
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,
-            address: nil,
+            address: Formatters.coordinate(location.coordinate),
+            skinTone: category?.takesSkinTone == true ? skinTone : nil,
             createdAt: now,
             updatedAt: now
         )
@@ -213,6 +305,10 @@ enum Formatters {
         formatter.timeStyle = .short
         return formatter
     }()
+
+    static func coordinate(_ value: CLLocationCoordinate2D) -> String {
+        String(format: "%.5f, %.5f", value.latitude, value.longitude)
+    }
 
     static func distance(_ meters: CLLocationDistance) -> String {
         measurement.string(from: Measurement(value: meters, unit: UnitLength.meters))

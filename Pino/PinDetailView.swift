@@ -29,7 +29,7 @@ struct PinDetailView: View {
                     span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006)
                 ))) {
                     Annotation("", coordinate: current.coordinate) {
-                        SavedPinMark(category: current.category)
+                        SavedPinMark(category: current.category, skinTone: current.skinTone ?? .none)
                     }
                     UserAnnotation()
                 }
@@ -83,8 +83,14 @@ struct PinDetailView: View {
                 dismiss()
             }
         }
+        .onAppear {
+            if current.category?.takesSkinTone == true {
+                environment.settings.skinTone = current.skinTone ?? .none
+            }
+        }
         .onChange(of: name) { _, _ in save() }
         .onChange(of: category) { _, _ in save() }
+        .onChange(of: environment.settings.skinTone) { _, _ in save() }
     }
 
     private func save() {
@@ -92,6 +98,7 @@ struct PinDetailView: View {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         updated.name = trimmed.isEmpty ? nil : trimmed
         updated.category = category
+        updated.skinTone = category?.takesSkinTone == true ? environment.settings.skinTone : nil
         if updated != current {
             store.update(updated)
         }

@@ -5,6 +5,20 @@ struct HomeView: View {
     @EnvironmentObject private var environment: AppEnvironment
 
     var body: some View {
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-pino-tab-pins") {
+            NavigationStack {
+                PinListView()
+            }
+        } else {
+            mapStack
+        }
+#else
+        mapStack
+#endif
+    }
+
+    private var mapStack: some View {
         NavigationStack {
             SaveMapScreen(findPin: $environment.findPin)
                 .toolbarTitleDisplayMode(.inline)
@@ -24,6 +38,7 @@ struct HomeView: View {
                                 environment.find(pin)
                             } label: {
                                 Image(systemName: "location.north.line.fill")
+                                    .foregroundStyle(.white)
                             }
                             .accessibilityLabel("Find")
                         }

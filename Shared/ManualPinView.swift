@@ -115,7 +115,7 @@ struct ManualPinView: View {
 
 #if os(iOS)
     private var canSave: Bool {
-        !isSaving && !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !isSaving
     }
 
     private func pick(_ hit: AddressHit) {
@@ -141,7 +141,7 @@ struct ManualPinView: View {
         guard canSave else { return }
         isSaving = true
         do {
-            let pin = try await environment.saveManualPin(
+            _ = try await environment.saveManualPin(
                 name: name,
                 address: picked?.line ?? address,
                 category: category,
@@ -149,7 +149,6 @@ struct ManualPinView: View {
             )
             isSaving = false
             PinoHaptics.success()
-            environment.find(pin)
             dismiss()
         } catch {
             isSaving = false

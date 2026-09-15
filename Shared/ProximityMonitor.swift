@@ -20,9 +20,6 @@ final class ProximityMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         guard enabled else { return }
         manager.requestAlwaysAuthorization()
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
-        if manager.authorizationStatus == .authorizedAlways {
-            manager.allowsBackgroundLocationUpdates = true
-        }
         names = Dictionary(uniqueKeysWithValues: pins.map { ($0.id.uuidString, $0.displayName) })
         for pin in pins.prefix(20) {
             let region = CLCircularRegion(center: pin.coordinate, radius: 80, identifier: pin.id.uuidString)
