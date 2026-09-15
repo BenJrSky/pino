@@ -18,6 +18,7 @@ struct PinoApp: App {
                 .environmentObject(environment.settings)
                 .environmentObject(environment)
                 .preferredColorScheme(.dark)
+                .onOpenURL { environment.handle($0) }
                 .onAppear {
 #if os(iOS)
                     UNUserNotificationCenter.current().delegate = notifications

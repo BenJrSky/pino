@@ -251,6 +251,15 @@ struct Pin: Identifiable, Codable, Equatable, Hashable {
         travelMode ?? .walking
     }
 
+    var mapsURL: URL {
+        var components = URLComponents(string: "https://maps.apple.com/")!
+        components.queryItems = [
+            URLQueryItem(name: "ll", value: "\(latitude),\(longitude)"),
+            URLQueryItem(name: "q", value: displayName)
+        ]
+        return components.url!
+    }
+
     static func make(location: CLLocation, category: PinCategory? = nil, skinTone: SkinTone = .none) -> Pin {
         let now = Date()
         return Pin(

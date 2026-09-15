@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AA0000000000000000000030"
-               BuildableName = "Pino.app"
+               BuildableName = "PinO.app"
                BlueprintName = "Pino"
                ReferencedContainer = "container:Pino.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA0000000000000000000030"
-            BuildableName = "Pino.app"
+            BuildableName = "PinO.app"
             BlueprintName = "Pino"
             ReferencedContainer = "container:Pino.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA0000000000000000000030"
-            BuildableName = "Pino.app"
+            BuildableName = "PinO.app"
             BlueprintName = "Pino"
             ReferencedContainer = "container:Pino.xcodeproj">
          </BuildableReference>

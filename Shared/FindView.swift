@@ -66,6 +66,8 @@ struct FindView: View {
             .ignoresSafeArea()
 #if os(watchOS)
             .onTapGesture(perform: handleMapTap)
+#else
+            .simultaneousGesture(TapGesture().onEnded(handleMapTap))
 #endif
 
             if let findPin {
@@ -74,14 +76,8 @@ struct FindView: View {
             }
 
             VStack(spacing: 0) {
-#if os(iOS)
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: handleMapTap)
-#else
                 Spacer()
                     .allowsHitTesting(false)
-#endif
                 HStack(alignment: .center, spacing: 8) {
                     if findPin != nil {
                         FindHUD(pin: livePin, route: route)

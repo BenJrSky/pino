@@ -196,6 +196,25 @@ struct SavedPinMark: View {
     }
 }
 
+struct MapSaveHint: View {
+    var body: some View {
+        Text("Tap to save")
+#if os(watchOS)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+#else
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+#endif
+            .foregroundStyle(.white)
+            .background(.black.opacity(0.55), in: Capsule())
+            .padding(.top, 72)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
 extension View {
     func mapGestures(onFind: @escaping () -> Void, onEdit: @escaping () -> Void) -> some View {
         padding(12)

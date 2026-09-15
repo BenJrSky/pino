@@ -37,7 +37,7 @@ struct HomeView: View {
                             Button {
                                 environment.find(pin)
                             } label: {
-                                Image(systemName: "location.north.line.fill")
+                                Image(systemName: "location.north.fill")
                                     .foregroundStyle(.white)
                             }
                             .accessibilityLabel("Find")

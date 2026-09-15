@@ -23,8 +23,7 @@ struct MapScreen: View {
                             Button {
                                 environment.find(pin)
                             } label: {
-                                Image(systemName: "location.north.line.fill")
-                                    .foregroundStyle(.white)
+                                Image(systemName: "location.north.fill")
                             }
                             .accessibilityLabel("Find")
                         }

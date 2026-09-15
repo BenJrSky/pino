@@ -36,7 +36,7 @@ struct ManualPinView: View {
                 ProgressView()
             }
         }
-        .alert("PINO", isPresented: Binding(
+        .alert("PinO", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -66,6 +66,12 @@ struct ManualPinView: View {
     private var phoneBody: some View {
         Form {
             Section {
+                CategoryPicker(selection: Binding(
+                    get: { Optional(category) },
+                    set: { if let value = $0 { category = value } }
+                ))
+            }
+            Section {
                 TextField("Name", text: $name)
                 TextField("Address", text: $address)
                     .textInputAutocapitalization(.words)
@@ -88,12 +94,6 @@ struct ManualPinView: View {
                         }
                     }
                 }
-            }
-            Section {
-                CategoryPicker(selection: Binding(
-                    get: { Optional(category) },
-                    set: { if let value = $0 { category = value } }
-                ))
             }
         }
         .navigationTitle("Add pin")
@@ -178,7 +178,7 @@ private struct ManualPinChrome: ViewModifier {
                     ProgressView()
                 }
             }
-            .alert("PINO", isPresented: Binding(
+            .alert("PinO", isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             )) {

@@ -8,13 +8,22 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $environment.selectedTab) {
             MapScreen()
-                .tabItem { Label("Map", systemImage: "map.fill") }
+                .tabItem {
+                    Image(systemName: "map.fill")
+                        .accessibilityLabel("Map")
+                }
                 .tag(0)
             PinsScreen()
-                .tabItem { Label("Pins", systemImage: "mappin") }
+                .tabItem {
+                    Image(systemName: "mappin")
+                        .accessibilityLabel("Pins")
+                }
                 .tag(1)
             SettingsScreen()
-                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+                .tabItem {
+                    Image(systemName: "gearshape.fill")
+                        .accessibilityLabel("Settings")
+                }
                 .tag(2)
         }
         .onAppear {

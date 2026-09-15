@@ -57,6 +57,8 @@ struct SaveMapScreen: View {
             .allowsHitTesting(!pickerVisible)
 #if os(watchOS)
             .onTapGesture(perform: handleMapTap)
+#else
+            .simultaneousGesture(TapGesture().onEnded(handleMapTap))
 #endif
 
             if let findPin, !pickerVisible {
@@ -66,14 +68,8 @@ struct SaveMapScreen: View {
 
             if !pickerVisible {
                 VStack(spacing: 0) {
-#if os(iOS)
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture(perform: handleMapTap)
-#else
                     Spacer()
                         .allowsHitTesting(false)
-#endif
                     HStack(alignment: .center, spacing: 8) {
                         if let findPin {
                             FindHUD(pin: findPin, route: route)
@@ -108,6 +104,11 @@ struct SaveMapScreen: View {
                 }
                 .allowsHitTesting(true)
 #endif
+            }
+
+            if store.pins.isEmpty, findPin == nil, !pickerVisible {
+                MapSaveHint()
+                    .allowsHitTesting(false)
             }
 
             if isSaving {
@@ -151,7 +152,7 @@ struct SaveMapScreen: View {
 #endif
             applyFirstPerson()
         }
-        .alert("PINO", isPresented: Binding(
+        .alert("PinO", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
         )) {
@@ -280,6 +281,9 @@ struct SaveMapScreen: View {
     }
 
     private func updateFollow() {
+#if os(iOS)
+        return
+#else
         guard findPin != nil, let user = location.location else {
             stopFollow?.cancel()
             if firstPerson {
@@ -305,6 +309,7 @@ struct SaveMapScreen: View {
                 applyOverview()
             }
         }
+#endif
     }
 
     private func isMoving(_ user: CLLocation, from previous: CLLocation?) -> Bool {

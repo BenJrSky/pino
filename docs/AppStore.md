@@ -1,9 +1,9 @@
-# App Store Connect — PINO
+# App Store Connect — PinO
 
 Paste this after the Apple Developer Program is active. Create the app with bundle `it.devben.pino` (Watch `it.devben.pino.watchkitapp`).
 
 ## Identity
-- Name: PINO
+- Name: PinO
 - Subtitle (EN, 30 chars): A pin. And you're back.
 - Subtitle (IT): Un pin. E torni.
 - Bundle ID: `it.devben.pino`
@@ -30,24 +30,24 @@ After the first push of this repo to `main`:
 The repo must be **public** for free GitHub Pages. The same privacy text is in **Settings → Privacy Policy**.
 
 ## Promotional text (EN, 170 characters max)
-A pin. And you're back. Tap the map, walk, PINO brings you back. iPhone and Apple Watch.
+A pin. And you're back. Tap the map, walk, PinO brings you back. iPhone and Apple Watch.
 
 ## Promotional text (IT)
-Un pin. E torni. Tocca la mappa, cammina, PINO ti riporta. iPhone e Apple Watch.
+Un pin. E torni. Tocca la mappa, cammina, PinO ti riporta. iPhone e Apple Watch.
 
 ## Description (EN)
 A pin. And you're back.
 
-Tap the map on iPhone or Apple Watch. Save a hotel, a parked car, a square, a shop — any place. Then walk. When you want back, tap it. PINO shows the distance, the time, and a route. On foot, by car, or on transit. While you move, the map is first-person.
+Tap the map on iPhone or Apple Watch. Save a hotel, a parked car, a square, a shop — any place. Then walk. When you want back, tap it. PinO shows the distance, the time, and a route. On foot, by car, or on transit. While you move, the map is first-person.
 
-Places stay on your iPhone and Watch and sync between them, even offline for GPS saves. Optional alerts can remind you when you are near a saved place again. No account. No PINO server.
+Places stay on your iPhone and Watch and sync between them, even offline for GPS saves. Optional alerts can remind you when you are near a saved place again. No account. No PinO server.
 
 ## Description (IT)
 Un pin. E torni.
 
-Tocca la mappa su iPhone o Apple Watch. Salva l’hotel, l’auto, una piazza, un negozio — qualunque posto. Poi cammina. Quando vuoi tornare, tocca il pin. PINO mostra distanza, tempo e il percorso. A piedi, in auto o con i mezzi. In movimento la mappa è in prima persona.
+Tocca la mappa su iPhone o Apple Watch. Salva l’hotel, l’auto, una piazza, un negozio — qualunque posto. Poi cammina. Quando vuoi tornare, tocca il pin. PinO mostra distanza, tempo e il percorso. A piedi, in auto o con i mezzi. In movimento la mappa è in prima persona.
 
-I posti restano su iPhone e Watch e si sincronizzano, anche offline per il GPS. Gli avvisi opzionali ti ricordano quando sei di nuovo vicino. Senza account. Senza server PINO.
+I posti restano su iPhone e Watch e si sincronizzano, anche offline per il GPS. Gli avvisi opzionali ti ricordano quando sei di nuovo vicino. Senza account. Senza server PinO.
 
 ## Keywords (100 characters max)
 walk,city,tourist,travel,hotel,pin,find,map,watch,gps,route,back,park,visit,location
@@ -73,7 +73,7 @@ Do you collect data? Yes.
 - Other data types: No (pins stay on device; no account, no analytics SDK)
 
 ## Review notes
-PINO saves user-created map pins and helps find them again.
+PinO saves user-created map pins and helps find them again.
 
 Location When In Use: save and navigate to pins.
 

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AA0000000000000000000060 /* PinoWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000011 /* PinoWatch.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		AA0000000000000000000061 /* PinoWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000012 /* PinoWatchWidgets.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -17,6 +18,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = AA0000000000000000000031;
 			remoteInfo = "Pino Watch";
+		};
+		AA0000000000000000000072 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA0000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA0000000000000000000032;
+			remoteInfo = PinoWatchWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -32,11 +40,23 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA0000000000000000000044 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AA0000000000000000000061 /* PinoWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		AA0000000000000000000010 /* Pino.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pino.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000010 /* PinO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PinO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0000000000000000000011 /* PinoWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PinoWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA0000000000000000000012 /* PinoWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PinoWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -47,11 +67,28 @@
 			);
 			target = AA0000000000000000000031 /* Pino Watch */;
 		};
+		AA0000000000000000000025 /* Exceptions for "PinoWatchWidgets" folder in "PinoWatchWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AA0000000000000000000032 /* PinoWatchWidgets */;
+		};
+		AA0000000000000000000026 /* Exceptions for "Pino" folder in "Pino" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AA0000000000000000000030 /* Pino */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AA0000000000000000000020 /* Pino */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AA0000000000000000000026 /* Exceptions for "Pino" folder in "Pino" target */,
+			);
 			path = Pino;
 			sourceTree = "<group>";
 		};
@@ -66,6 +103,14 @@
 		AA0000000000000000000022 /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		AA0000000000000000000024 /* PinoWatchWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AA0000000000000000000025 /* Exceptions for "PinoWatchWidgets" folder in "PinoWatchWidgets" target */,
+			);
+			path = PinoWatchWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -85,6 +130,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA0000000000000000000054 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -94,6 +146,7 @@
 				AA0000000000000000000022 /* Shared */,
 				AA0000000000000000000020 /* Pino */,
 				AA0000000000000000000021 /* PinoWatch */,
+				AA0000000000000000000024 /* PinoWatchWidgets */,
 				AA0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,8 +154,9 @@
 		AA0000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AA0000000000000000000010 /* Pino.app */,
+				AA0000000000000000000010 /* PinO.app */,
 				AA0000000000000000000011 /* PinoWatch.app */,
+				AA0000000000000000000012 /* PinoWatchWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -132,7 +186,7 @@
 			packageProductDependencies = (
 			);
 			productName = Pino;
-			productReference = AA0000000000000000000010 /* Pino.app */;
+			productReference = AA0000000000000000000010 /* PinO.app */;
 			productType = "com.apple.product-type.application";
 		};
 		AA0000000000000000000031 /* Pino Watch */ = {
@@ -142,10 +196,12 @@
 				AA0000000000000000000050 /* Sources */,
 				AA0000000000000000000051 /* Frameworks */,
 				AA0000000000000000000052 /* Resources */,
+				AA0000000000000000000044 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AA0000000000000000000073 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AA0000000000000000000021 /* PinoWatch */,
@@ -157,6 +213,28 @@
 			productName = "Pino Watch";
 			productReference = AA0000000000000000000011 /* PinoWatch.app */;
 			productType = "com.apple.product-type.application";
+		};
+		AA0000000000000000000032 /* PinoWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA0000000000000000000083 /* Build configuration list for PBXNativeTarget "PinoWatchWidgets" */;
+			buildPhases = (
+				AA0000000000000000000053 /* Sources */,
+				AA0000000000000000000054 /* Frameworks */,
+				AA0000000000000000000055 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AA0000000000000000000024 /* PinoWatchWidgets */,
+			);
+			name = PinoWatchWidgets;
+			packageProductDependencies = (
+			);
+			productName = PinoWatchWidgets;
+			productReference = AA0000000000000000000012 /* PinoWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -172,6 +250,9 @@
 						CreatedOnToolsVersion = 26.1.1;
 					};
 					AA0000000000000000000031 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					AA0000000000000000000032 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
@@ -196,6 +277,7 @@
 			targets = (
 				AA0000000000000000000030 /* Pino */,
 				AA0000000000000000000031 /* Pino Watch */,
+				AA0000000000000000000032 /* PinoWatchWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -209,6 +291,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0000000000000000000052 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA0000000000000000000055 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -232,6 +321,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA0000000000000000000053 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -239,6 +335,11 @@
 			isa = PBXTargetDependency;
 			target = AA0000000000000000000031 /* Pino Watch */;
 			targetProxy = AA0000000000000000000070 /* PBXContainerItemProxy */;
+		};
+		AA0000000000000000000073 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA0000000000000000000032 /* PinoWatchWidgets */;
+			targetProxy = AA0000000000000000000072 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -376,7 +477,10 @@
 				DEVELOPMENT_TEAM = 5GAKG5ZM2M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = PINO;
+				INFOPLIST_FILE = Pino/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = Pino/Pino.entitlements;
+				INFOPLIST_KEY_CFBundleDisplayName = PinO;
+				INFOPLIST_KEY_CFBundleName = PinO;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "PINO uses your location to alert you when you are near a saved pin.";
@@ -391,7 +495,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = it.devben.pino;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = PinO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -416,7 +520,10 @@
 				DEVELOPMENT_TEAM = 5GAKG5ZM2M;
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = PINO;
+				INFOPLIST_FILE = Pino/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = Pino/Pino.entitlements;
+				INFOPLIST_KEY_CFBundleDisplayName = PinO;
+				INFOPLIST_KEY_CFBundleName = PinO;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "PINO uses your location to alert you when you are near a saved pin.";
@@ -431,7 +538,7 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = it.devben.pino;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = PinO;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -458,7 +565,9 @@
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PinoWatch/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PINO;
+				CODE_SIGN_ENTITLEMENTS = PinoWatch/PinoWatch.entitlements;
+				INFOPLIST_KEY_CFBundleDisplayName = PinO;
+				INFOPLIST_KEY_CFBundleName = PinO;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = it.devben.pino;
@@ -497,7 +606,9 @@
 				ENABLE_PREVIEWS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PinoWatch/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PINO;
+				CODE_SIGN_ENTITLEMENTS = PinoWatch/PinoWatch.entitlements;
+				INFOPLIST_KEY_CFBundleDisplayName = PinO;
+				INFOPLIST_KEY_CFBundleName = PinO;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = it.devben.pino;
@@ -518,6 +629,71 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		AA0000000000000000000096 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = PinoWatchWidgets/PinoWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 5GAKG5ZM2M;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PinoWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PinO;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = it.devben.pino.watchkitapp.widgets;
+				PRODUCT_NAME = PinoWatchWidgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		AA0000000000000000000097 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = PinoWatchWidgets/PinoWatchWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 5GAKG5ZM2M;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PinoWatchWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PinO;
+				INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier = "com.apple.widgetkit-extension";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = it.devben.pino.watchkitapp.widgets;
+				PRODUCT_NAME = PinoWatchWidgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				VALIDATE_PRODUCT = YES;
@@ -551,6 +727,15 @@
 			buildConfigurations = (
 				AA0000000000000000000094 /* Debug */,
 				AA0000000000000000000095 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA0000000000000000000083 /* Build configuration list for PBXNativeTarget "PinoWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA0000000000000000000096 /* Debug */,
+				AA0000000000000000000097 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -3,7 +3,20 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>PINO</string>
+	<string>PinO</string>
+	<key>CFBundleName</key>
+	<string>PinO</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>it.devben.pino.watchkitapp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pino</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSLocationWhenInUseUsageDescription</key>

@@ -33,7 +33,7 @@ final class ProximityMonitor: NSObject, ObservableObject, CLLocationManagerDeleg
         Task { @MainActor in
             let name = names[region.identifier] ?? String(localized: "a pin")
             let content = UNMutableNotificationContent()
-            content.title = "PINO"
+            content.title = "PinO"
             content.body = String(format: String(localized: "You're near %@."), name)
             content.userInfo = ["pinId": region.identifier]
             content.sound = .default

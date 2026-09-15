@@ -1,5 +1,8 @@
 import Combine
 import Foundation
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 final class SettingsStore: ObservableObject {
     @Published var retention: RetentionPeriod {
@@ -40,11 +43,13 @@ final class PinStore: ObservableObject {
     private var applyingRemote = false
     private let settings: SettingsStore
     private let sync = SyncService()
-    private let fileURL: URL
+    private let localURL: URL
+    private var cloudURL: URL?
+    private var cloudQuery: NSMetadataQuery?
 
     init(settings: SettingsStore) {
         self.settings = settings
-        fileURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        localURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("pino-pins.json")
         load()
         prune()
@@ -53,6 +58,10 @@ final class PinStore: ObservableObject {
         }
         sync.start()
         push()
+        publishWidget()
+#if os(iOS)
+        startCloud()
+#endif
     }
 
     var lastPin: Pin? {
@@ -149,13 +158,37 @@ final class PinStore: ObservableObject {
     private func persist() {
         let state = PinSnapshot(pins: pins, deletedIds: deletedIds)
         guard let data = try? PinoJSON.encoder.encode(state) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        try? data.write(to: localURL, options: .atomic)
+        publishWidget()
     }
 
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL),
+        guard let data = try? Data(contentsOf: localURL),
               let state = try? PinoJSON.decoder.decode(PinSnapshot.self, from: data) else { return }
         pins = state.pins.sorted { $0.createdAt > $1.createdAt }
         deletedIds = state.deletedIds
     }
+
+    private func publishWidget() {
+        if let folder = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.it.devben.pino") {
+            let last = lastPin
+            let payload = WidgetSnapshot(
+                count: pins.count,
+                lastName: last?.displayName ?? "",
+                lastSymbol: last?.symbol ?? "📍"
+            )
+            if let data = try? PinoJSON.encoder.encode(payload) {
+                try? data.write(to: folder.appendingPathComponent("widget.json"), options: .atomic)
+            }
+        }
+#if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
+#endif
+    }
+}
+
+struct WidgetSnapshot: Codable {
+    var count: Int
+    var lastName: String
+    var lastSymbol: String
 }

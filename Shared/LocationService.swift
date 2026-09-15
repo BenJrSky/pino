@@ -49,9 +49,25 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
             requestAccess()
         }
         manager.startUpdatingLocation()
+        setNavigating(false)
+    }
+
+    func setNavigating(_ on: Bool) {
+#if os(watchOS)
+        manager.desiredAccuracy = on ? kCLLocationAccuracyBest : kCLLocationAccuracyNearestTenMeters
+        manager.distanceFilter = on ? 2 : 20
+        if on, CLLocationManager.headingAvailable() {
+            manager.startUpdatingHeading()
+        } else {
+            manager.stopUpdatingHeading()
+            heading = nil
+        }
+#else
+        manager.distanceFilter = on ? 2 : 8
         if CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         }
+#endif
     }
 
     func distance(to pin: Pin) -> CLLocationDistance? {

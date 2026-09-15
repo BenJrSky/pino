@@ -11,6 +11,7 @@ struct PinoWatchApp: App {
                 .environmentObject(environment.store)
                 .environmentObject(environment.location)
                 .environmentObject(environment.settings)
+                .onOpenURL { environment.handle($0) }
                 .onAppear { environment.start() }
         }
     }

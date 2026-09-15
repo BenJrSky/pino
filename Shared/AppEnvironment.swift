@@ -23,6 +23,12 @@ final class AppEnvironment: ObservableObject {
     }
 
     func start() {
+        if didStart {
+            location.start()
+            location.setNavigating(findPin != nil)
+            return
+        }
+        didStart = true
         selectedTab = 0
         arrivedPin = nil
         showPinsList = false
@@ -45,6 +51,7 @@ final class AppEnvironment: ObservableObject {
 #if DEBUG
         applyScreenshotLaunchArgs()
 #endif
+        location.setNavigating(findPin != nil)
     }
 
 #if DEBUG
@@ -74,20 +81,36 @@ final class AppEnvironment: ObservableObject {
     private var announcedNearby: Set<UUID> = []
     private var locationWatch: AnyCancellable?
     private var pinsWatch: AnyCancellable?
+    private var didStart = false
 
     func find(_ pin: Pin) {
         findPin = pin
         selectedTab = 0
+        location.setNavigating(true)
     }
 
     func stopFind() {
         guard findPin != nil else {
             VoiceGuide.stop()
+            location.setNavigating(false)
             return
         }
         findPin = nil
         announcedNearby.removeAll()
         VoiceGuide.stop()
+        location.setNavigating(false)
+    }
+
+    func handle(_ url: URL) {
+        guard url.scheme == "pino" else { return }
+        switch url.host {
+        case "save":
+            Task { _ = try? await savePin(category: .place) }
+        case "find":
+            if let pin = store.lastPin { find(pin) }
+        default:
+            break
+        }
     }
 
     func savePin(category: PinCategory) async throws -> Pin {

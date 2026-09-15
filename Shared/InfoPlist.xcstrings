@@ -8,7 +8,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "PINO"
+            "value" : "PinO"
           }
         }
       }
@@ -20,13 +20,14 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Pino"
+            "value" : "PinO"
           }
         }
       }
     },
     "NSLocationAlwaysAndWhenInUseUsageDescription" : {
       "comment" : "Privacy - Location Always and When In Use Usage Description",
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

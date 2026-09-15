@@ -67,7 +67,7 @@ struct PinsScreen: View {
                                 Button {
                                     environment.find(pin)
                                 } label: {
-                                    Image(systemName: "location.north.line.fill")
+                                    Image(systemName: "location.north.fill")
                                         .font(.body.weight(.semibold))
                                         .foregroundStyle(.white)
                                         .frame(width: 44, height: 44)
@@ -75,6 +75,12 @@ struct PinsScreen: View {
                                 }
                                 .buttonStyle(.borderless)
                                 .accessibilityLabel("Find")
+                            }
+                            .swipeActions(edge: .leading) {
+                                ShareLink(item: pin.mapsURL) {
+                                    Label("Share", systemImage: "square.and.arrow.up")
+                                }
+                                .tint(Color.pino)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
