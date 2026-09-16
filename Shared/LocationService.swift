@@ -25,10 +25,11 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     private var waiters: [UUID: CheckedContinuation<CLLocation, Error>] = [:]
 
     override init() {
-        manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 2
-        manager.headingFilter = 2
+        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        manager.distanceFilter = kCLDistanceFilterNone
+        manager.headingFilter = 3
         manager.activityType = .fitness
+        manager.pausesLocationUpdatesAutomatically = false
         status = manager.authorizationStatus
         super.init()
         manager.delegate = self
@@ -54,8 +55,8 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
 
     func setNavigating(_ on: Bool) {
 #if os(watchOS)
-        manager.desiredAccuracy = on ? kCLLocationAccuracyBest : kCLLocationAccuracyNearestTenMeters
-        manager.distanceFilter = on ? 2 : 20
+        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+        manager.distanceFilter = on ? kCLDistanceFilterNone : 4
         if on, CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         } else {
@@ -63,7 +64,8 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
             heading = nil
         }
 #else
-        manager.distanceFilter = on ? 2 : 8
+        manager.desiredAccuracy = on ? kCLLocationAccuracyBestForNavigation : kCLLocationAccuracyBest
+        manager.distanceFilter = on ? 1 : 8
         if CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         }
@@ -125,8 +127,16 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        guard let location = locations.last, location.horizontalAccuracy > 0 else { return }
+#if os(watchOS)
+        guard location.horizontalAccuracy <= 45 else { return }
+#endif
         Task { @MainActor in
+            if let current = self.location,
+               location.horizontalAccuracy > current.horizontalAccuracy + 12,
+               location.timestamp.timeIntervalSince(current.timestamp) < 8 {
+                return
+            }
             self.location = location
             resumeWaiters(.success(location))
         }

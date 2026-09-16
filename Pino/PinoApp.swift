@@ -9,6 +9,7 @@ struct PinoApp: App {
 #if os(iOS)
     private let notifications = ArrivalNotifications()
 #endif
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +25,12 @@ struct PinoApp: App {
                     UNUserNotificationCenter.current().delegate = notifications
 #endif
                     environment.start()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    guard phase == .active else { return }
+#if os(iOS)
+                    environment.store.pullCloud()
+#endif
                 }
         }
     }

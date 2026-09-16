@@ -27,7 +27,6 @@
     },
     "NSLocationAlwaysAndWhenInUseUsageDescription" : {
       "comment" : "Privacy - Location Always and When In Use Usage Description",
-      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

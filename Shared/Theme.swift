@@ -59,49 +59,92 @@ enum PinoMaps {
         return .region(region(containing: [user, pin]))
     }
 
-    static func firstPerson(user: CLLocation, heading: Double?) -> MapCameraPosition {
-        let facing = heading ?? (user.course >= 0 ? user.course : 0)
-        let look = ahead(from: user.coordinate, heading: facing, meters: 18)
+    static func followUser(_ user: CLLocation, compass: Double?, route: MKRoute? = nil) -> MapCameraPosition {
 #if os(watchOS)
-        let distance: CLLocationDistance = 90
-        let pitch: Double = 55
-#else
-        let distance: CLLocationDistance = 120
-        let pitch: Double = 68
-#endif
+        if let route, let snap = PinoWayfinding.snap(from: user.coordinate, onto: route), snap.offset < 40 {
+            return streetCamera(snap)
+        }
+        let facing = PinoWayfinding.travelHeading(from: user, compass: compass) ?? 0
         return .camera(MapCamera(
-            centerCoordinate: look,
-            distance: distance,
+            centerCoordinate: user.coordinate,
+            distance: 52,
             heading: facing,
-            pitch: pitch
+            pitch: 48
         ))
+#else
+        return userCamera(user.coordinate)
+#endif
     }
 
-    static func ahead(from: CLLocationCoordinate2D, heading: Double, meters: CLLocationDistance) -> CLLocationCoordinate2D {
-        let radians = heading * .pi / 180
-        let north = meters * cos(radians) / 111_320
-        let east = meters * sin(radians) / (111_320 * max(cos(from.latitude * .pi / 180), 0.01))
-        return CLLocationCoordinate2D(latitude: from.latitude + north, longitude: from.longitude + east)
+    static func streetCamera(_ snap: PinoWayfinding.Snap) -> MapCameraPosition {
+        .camera(MapCamera(
+            centerCoordinate: snap.coordinate,
+            distance: 46,
+            heading: snap.heading,
+            pitch: 50
+        ))
     }
 }
 
 enum PinoWayfinding {
+    struct Snap {
+        var coordinate: CLLocationCoordinate2D
+        var heading: Double
+        var offset: CLLocationDistance
+    }
+
+    static func coordinates(of route: MKRoute) -> [CLLocationCoordinate2D] {
+        let count = route.polyline.pointCount
+        guard count > 0 else { return [] }
+        var coords = Array(repeating: kCLLocationCoordinate2DInvalid, count: count)
+        route.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: count))
+        return coords.filter { $0.latitude.isFinite }
+    }
+
+    static func snap(from user: CLLocationCoordinate2D, onto route: MKRoute) -> Snap? {
+        let coords = coordinates(of: route)
+        guard coords.count > 1 else { return nil }
+        var best = Snap(coordinate: coords[0], heading: GeoMath.bearing(from: coords[0], to: coords[1]), offset: .greatestFiniteMagnitude)
+        for index in 0..<(coords.count - 1) {
+            let a = coords[index]
+            let b = coords[index + 1]
+            let point = GeoMath.project(user, onto: a, b)
+            let offset = GeoMath.distance(from: user, to: point)
+            if offset < best.offset {
+                best = Snap(coordinate: point, heading: GeoMath.bearing(from: a, to: b), offset: offset)
+            }
+        }
+        return best
+    }
+
     static func lookAhead(
         from user: CLLocationCoordinate2D,
         to pin: CLLocationCoordinate2D,
         route: MKRoute?
     ) -> CLLocationCoordinate2D {
         guard let route else { return pin }
-        let count = route.polyline.pointCount
-        guard count > 1 else { return pin }
-        var coords = Array(repeating: kCLLocationCoordinate2DInvalid, count: count)
-        route.polyline.getCoordinates(&coords, range: NSRange(location: 0, length: count))
-        for coordinate in coords where coordinate.latitude.isFinite {
-            if GeoMath.distance(from: user, to: coordinate) > 28 {
+        let coords = coordinates(of: route)
+        guard coords.count > 1 else { return pin }
+        let origin = snap(from: user, onto: route)?.coordinate ?? user
+        for coordinate in coords {
+            if GeoMath.distance(from: origin, to: coordinate) > 18 {
                 return coordinate
             }
         }
         return pin
+    }
+
+    static func travelHeading(from user: CLLocation, compass: Double?) -> Double? {
+        if user.speed >= 0.5, user.course >= 0 {
+            return user.course
+        }
+#if os(watchOS)
+        return nil
+#else
+        if let compass { return compass }
+        if user.course >= 0 { return user.course }
+        return nil
+#endif
     }
 
     static func relativeDelta(
@@ -109,14 +152,7 @@ enum PinoWayfinding {
         to target: CLLocationCoordinate2D,
         heading: Double?
     ) -> Double? {
-        let facing: Double
-        if let heading {
-            facing = heading
-        } else if user.course >= 0 {
-            facing = user.course
-        } else {
-            return nil
-        }
+        guard let facing = travelHeading(from: user, compass: heading) else { return nil }
         var delta = GeoMath.bearing(from: user.coordinate, to: target) - facing
         while delta > 180 { delta -= 360 }
         while delta < -180 { delta += 360 }
@@ -193,6 +229,21 @@ struct SavedPinMark: View {
             .frame(width: diameter, height: diameter)
             .background(Color.pino, in: Circle())
             .accessibilityLabel(category?.label ?? "")
+    }
+}
+
+struct OnRoutePuck: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.white)
+                .frame(width: 16, height: 16)
+            Circle()
+                .fill(Color.pino)
+                .frame(width: 11, height: 11)
+        }
+        .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+        .accessibilityLabel("You")
     }
 }
 

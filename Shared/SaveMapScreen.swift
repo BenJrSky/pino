@@ -17,9 +17,6 @@ struct SaveMapScreen: View {
     @State private var lastTappedPin: Pin?
     @State private var settingsPin: Pin?
     @State private var pendingPinTap: Task<Void, Never>?
-    @State private var firstPerson = false
-    @State private var stopFollow: Task<Void, Never>?
-    @State private var lastSample: CLLocation?
     @State private var lastHeadingCamera = Date.distantPast
 
 #if os(watchOS)
@@ -31,7 +28,13 @@ struct SaveMapScreen: View {
     var body: some View {
         ZStack {
             Map(position: $camera) {
-                UserAnnotation()
+                if let route {
+                    MapPolyline(route.polyline)
+                        .stroke(Color.route, lineWidth: 6)
+                } else if let findPin, let user = location.location {
+                    MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
+                        .stroke(Color.route.opacity(0.75), style: StrokeStyle(lineWidth: 5, dash: [10, 7]))
+                }
                 ForEach(store.pins) { pin in
                     Annotation("", coordinate: pin.coordinate) {
                         SavedPinMark(category: pin.category, skinTone: pin.skinTone ?? .none, diameter: markSize)
@@ -43,13 +46,18 @@ struct SaveMapScreen: View {
                             .accessibilityHint("Find")
                     }
                 }
-                if let route {
-                    MapPolyline(route.polyline)
-                        .stroke(Color.route, lineWidth: 6)
-                } else if let findPin, let user = location.location {
-                    MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
-                        .stroke(Color.route.opacity(0.75), style: StrokeStyle(lineWidth: 5, dash: [10, 7]))
+#if os(watchOS)
+                if let snap = routeSnap {
+                    Annotation("", coordinate: snap.coordinate) {
+                        OnRoutePuck()
+                            .allowsHitTesting(false)
+                    }
+                } else {
+                    UserAnnotation()
                 }
+#else
+                UserAnnotation()
+#endif
             }
             .pinoMapStyle()
             .mapControlVisibility(.hidden)
@@ -120,13 +128,9 @@ struct SaveMapScreen: View {
         .onChange(of: findPin) { _, pin in
             lastRoutedFrom = nil
             route = nil
-            firstPerson = false
-            stopFollow?.cancel()
             if pin == nil {
                 VoiceGuide.stop()
-                if let user = location.location {
-                    camera = PinoMaps.userCamera(user.coordinate)
-                }
+                followUser()
             }
             Task { await loadRoute() }
             updateFollow()
@@ -144,13 +148,12 @@ struct SaveMapScreen: View {
             Task { await loadRoute() }
         }
         .onChange(of: location.heading?.timestamp) { _, _ in
-            guard firstPerson else { return }
 #if os(watchOS)
             let now = Date()
             guard now.timeIntervalSince(lastHeadingCamera) >= 0.3 else { return }
             lastHeadingCamera = now
+            followUser()
 #endif
-            applyFirstPerson()
         }
         .alert("PinO", isPresented: Binding(
             get: { errorMessage != nil },
@@ -162,6 +165,7 @@ struct SaveMapScreen: View {
         }
         .onAppear {
             location.start()
+            followUser()
             Task { await loadRoute() }
 #if DEBUG
             applyScreenshotOverview()
@@ -169,7 +173,6 @@ struct SaveMapScreen: View {
         }
         .onDisappear {
             pendingPinTap?.cancel()
-            stopFollow?.cancel()
         }
         .navigationDestination(item: $settingsPin) { pin in
 #if os(iOS)
@@ -178,6 +181,14 @@ struct SaveMapScreen: View {
             PinEditView(pin: pin)
 #endif
         }
+    }
+
+    private var routeSnap: PinoWayfinding.Snap? {
+        guard findPin != nil, let user = location.location, let route else { return nil }
+        guard let snap = PinoWayfinding.snap(from: user.coordinate, onto: route), snap.offset < 40 else {
+            return nil
+        }
+        return snap
     }
 
     private var gallery: some View {
@@ -266,72 +277,33 @@ struct SaveMapScreen: View {
     }
 
     private func recenter() {
+#if os(watchOS)
+        followUser()
+#else
         if findPin != nil {
-            if firstPerson {
-                applyFirstPerson()
-            } else {
-                applyOverview()
-            }
+            applyOverview()
         } else if let user = location.location {
             camera = PinoMaps.userCamera(user.coordinate)
         } else {
             camera = .userLocation(fallback: .automatic)
         }
+#endif
         PinoHaptics.click()
+    }
+
+    private func followUser() {
+        guard let user = location.location, user.horizontalAccuracy > 0, user.horizontalAccuracy < 45 else {
+            return
+        }
+        camera = PinoMaps.followUser(user, compass: location.currentHeading, route: route)
     }
 
     private func updateFollow() {
 #if os(iOS)
         return
 #else
-        guard findPin != nil, let user = location.location else {
-            stopFollow?.cancel()
-            if firstPerson {
-                firstPerson = false
-                applyOverview()
-            }
-            lastSample = nil
-            return
-        }
-        let previous = lastSample
-        lastSample = user
-        if isMoving(user, from: previous) {
-            stopFollow?.cancel()
-            stopFollow = nil
-            firstPerson = true
-            applyFirstPerson()
-        } else if firstPerson, isStopped(user, from: previous) {
-            stopFollow?.cancel()
-            stopFollow = Task {
-                try? await Task.sleep(for: .milliseconds(800))
-                guard !Task.isCancelled else { return }
-                firstPerson = false
-                applyOverview()
-            }
-        }
+        followUser()
 #endif
-    }
-
-    private func isMoving(_ user: CLLocation, from previous: CLLocation?) -> Bool {
-        guard user.horizontalAccuracy > 0, user.horizontalAccuracy < 40 else { return false }
-        if user.speed >= 0.35 { return true }
-        guard let previous else { return false }
-        let dt = user.timestamp.timeIntervalSince(previous.timestamp)
-        let dist = user.distance(from: previous)
-        guard dt > 0.4, dist >= 1.5 else { return false }
-        return dist / dt >= 0.35
-    }
-
-    private func isStopped(_ user: CLLocation, from previous: CLLocation?) -> Bool {
-        if user.speed >= 0 { return user.speed < 0.28 }
-        guard let previous else { return true }
-        return user.distance(from: previous) < 1.2
-    }
-
-    private func applyFirstPerson() {
-        guard let user = location.location else { return }
-        let heading = location.currentHeading ?? (user.course >= 0 ? user.course : nil)
-        camera = PinoMaps.firstPerson(user: user, heading: heading)
     }
 
     private func applyOverview() {
@@ -343,6 +315,21 @@ struct SaveMapScreen: View {
         guard let pin = findPin,
               store.pins.contains(where: { $0.id == pin.id }),
               let origin = location.location else { return }
+#if os(watchOS)
+        if let route,
+           let snap = PinoWayfinding.snap(from: origin.coordinate, onto: route),
+           snap.offset < 25,
+           let lastRoutedFrom,
+           origin.distance(from: lastRoutedFrom) < 12 {
+            return
+        }
+        lastRoutedFrom = origin
+        let found = await PinoDirections.route(
+            from: origin.coordinate,
+            to: pin.coordinate,
+            mode: .walking
+        )
+#else
         if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
             return
         }
@@ -352,11 +339,14 @@ struct SaveMapScreen: View {
             to: pin.coordinate,
             mode: (store.pins.first(where: { $0.id == pin.id }) ?? pin).routeMode
         )
+#endif
         guard findPin?.id == pin.id else { return }
         route = found
-        if !firstPerson {
-            applyOverview()
-        }
+#if os(watchOS)
+        followUser()
+#else
+        applyOverview()
+#endif
     }
 
     private func save(_ category: PinCategory) async {
@@ -438,6 +428,13 @@ struct WayfindingBanner: View {
 
     private var delta: Double? {
         guard let user = location.location else { return nil }
+        if let route, let snap = PinoWayfinding.snap(from: user.coordinate, onto: route), snap.offset < 40 {
+            let target = PinoWayfinding.lookAhead(from: user.coordinate, to: pin.coordinate, route: route)
+            var value = GeoMath.bearing(from: snap.coordinate, to: target) - snap.heading
+            while value > 180 { value -= 360 }
+            while value < -180 { value += 360 }
+            return value
+        }
         let target = PinoWayfinding.lookAhead(from: user.coordinate, to: pin.coordinate, route: route)
         return PinoWayfinding.relativeDelta(from: user, to: target, heading: location.currentHeading)
     }
@@ -445,25 +442,30 @@ struct WayfindingBanner: View {
     var body: some View {
         GeometryReader { geo in
             if let delta {
-                let edge = PinoWayfinding.edge(for: delta)
-                let correct = abs(delta) < 90
-                strip(edge: edge, color: correct ? Color.pino : .red, in: geo.size)
-                    .animation(.easeInOut(duration: 0.2), value: edge)
-                    .animation(.easeInOut(duration: 0.2), value: correct)
-                    .onChange(of: correct) { _, isCorrect in
-                        if isCorrect {
-                            lastWrongPulse = nil
-                        } else {
-                            pulseWrong()
+                let magnitude = abs(delta)
+                if magnitude > 50, magnitude < 125 {
+                    Color.clear
+                } else {
+                    let edge = PinoWayfinding.edge(for: delta)
+                    let correct = magnitude <= 50
+                    strip(edge: edge, color: correct ? Color.pino : .red, in: geo.size)
+                        .animation(.easeInOut(duration: 0.2), value: edge)
+                        .animation(.easeInOut(duration: 0.2), value: correct)
+                        .onChange(of: correct) { _, isCorrect in
+                            if isCorrect {
+                                lastWrongPulse = nil
+                            } else {
+                                pulseWrong()
+                            }
                         }
-                    }
-                    .onChange(of: location.heading?.timestamp) { _, _ in
-                        guard !correct else { return }
-                        pulseWrongIfNeeded()
-                    }
-                    .onAppear {
-                        if !correct { pulseWrong() }
-                    }
+                        .onChange(of: location.heading?.timestamp) { _, _ in
+                            guard !correct else { return }
+                            pulseWrongIfNeeded()
+                        }
+                        .onAppear {
+                            if !correct { pulseWrong() }
+                        }
+                }
             }
         }
         .allowsHitTesting(false)

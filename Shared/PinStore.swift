@@ -158,7 +158,12 @@ final class PinStore: ObservableObject {
     private func persist() {
         let state = PinSnapshot(pins: pins, deletedIds: deletedIds)
         guard let data = try? PinoJSON.encoder.encode(state) else { return }
-        try? data.write(to: localURL, options: .atomic)
+        write(data, to: localURL)
+#if os(iOS)
+        if let cloudURL {
+            write(data, to: cloudURL)
+        }
+#endif
         publishWidget()
     }
 
@@ -185,6 +190,62 @@ final class PinStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
 #endif
     }
+
+    private func write(_ data: Data, to url: URL) {
+        let coordinator = NSFileCoordinator()
+        coordinator.coordinate(writingItemAt: url, options: .forReplacing, error: nil) { url in
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    private func read(_ url: URL) -> Data? {
+        var data: Data?
+        let coordinator = NSFileCoordinator()
+        coordinator.coordinate(readingItemAt: url, options: .withoutChanges, error: nil) { url in
+            data = try? Data(contentsOf: url)
+        }
+        return data
+    }
+
+#if os(iOS)
+    func pullCloud() {
+        if cloudURL == nil {
+            startCloud()
+        }
+        guard let cloudURL, let data = read(cloudURL),
+              let state = try? PinoJSON.decoder.decode(PinSnapshot.self, from: data) else { return }
+        apply(state)
+    }
+
+    private func startCloud() {
+        guard let root = FileManager.default.url(forUbiquityContainerIdentifier: "iCloud.it.devben.pino") else {
+            return
+        }
+        let folder = root.appendingPathComponent("Documents")
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let remote = folder.appendingPathComponent("pino-pins.json")
+        cloudURL = remote
+        if read(remote) == nil, let local = try? Data(contentsOf: localURL) {
+            write(local, to: remote)
+        } else {
+            pullCloud()
+        }
+        let query = NSMetadataQuery()
+        query.predicate = NSPredicate(format: "%K == %@", NSMetadataItemFSNameKey, "pino-pins.json")
+        query.searchScopes = [NSMetadataQueryUbiquitousDocumentsScope]
+        NotificationCenter.default.addObserver(
+            forName: .NSMetadataQueryDidUpdate,
+            object: query,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.pullCloud()
+            }
+        }
+        query.start()
+        cloudQuery = query
+    }
+#endif
 }
 
 struct WidgetSnapshot: Codable {

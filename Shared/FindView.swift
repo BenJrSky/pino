@@ -42,7 +42,13 @@ struct FindView: View {
     var body: some View {
         ZStack {
             Map(position: $camera) {
-                UserAnnotation()
+                if let route {
+                    MapPolyline(route.polyline)
+                        .stroke(Color.route, lineWidth: 6)
+                } else if let findPin, let user = location.location {
+                    MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
+                        .stroke(Color.route.opacity(0.75), style: StrokeStyle(lineWidth: 5, dash: [10, 7]))
+                }
                 ForEach(store.pins) { item in
                     Annotation("", coordinate: item.coordinate) {
                         SavedPinMark(category: item.category, skinTone: item.skinTone ?? .none, diameter: markSize)
@@ -53,13 +59,18 @@ struct FindView: View {
                             )
                     }
                 }
-                if let route {
-                    MapPolyline(route.polyline)
-                        .stroke(Color.route, lineWidth: 6)
-                } else if let findPin, let user = location.location {
-                    MapPolyline(coordinates: [user.coordinate, findPin.coordinate])
-                        .stroke(Color.route.opacity(0.75), style: StrokeStyle(lineWidth: 5, dash: [10, 7]))
+#if os(watchOS)
+                if let user = location.location, let route,
+                   let snap = PinoWayfinding.snap(from: user.coordinate, onto: route), snap.offset < 40 {
+                    Annotation("", coordinate: snap.coordinate) {
+                        OnRoutePuck()
+                    }
+                } else {
+                    UserAnnotation()
                 }
+#else
+                UserAnnotation()
+#endif
             }
             .pinoMapStyle()
             .mapControlVisibility(.hidden)
@@ -125,6 +136,11 @@ struct FindView: View {
         }
         .onChange(of: location.location?.timestamp) { _, _ in
             Task { await loadRoute() }
+#if os(watchOS)
+            if let user = location.location, user.horizontalAccuracy > 0, user.horizontalAccuracy < 45 {
+                camera = PinoMaps.followUser(user, compass: location.currentHeading, route: route)
+            }
+#endif
         }
         .onDisappear {
             pendingPinTap?.cancel()
@@ -176,7 +192,11 @@ struct FindView: View {
 
     private func recenter() {
         if let user = location.location {
+#if os(watchOS)
+            camera = PinoMaps.followUser(user, compass: location.currentHeading, route: route)
+#else
             camera = PinoMaps.userCamera(user.coordinate)
+#endif
         } else {
             camera = .userLocation(fallback: .automatic)
         }
@@ -187,6 +207,23 @@ struct FindView: View {
         guard let findPin,
               store.pins.contains(where: { $0.id == findPin.id }),
               let origin = location.location else { return }
+#if os(watchOS)
+        if let route,
+           let snap = PinoWayfinding.snap(from: origin.coordinate, onto: route),
+           snap.offset < 25,
+           let lastRoutedFrom,
+           origin.distance(from: lastRoutedFrom) < 12 {
+            return
+        }
+        lastRoutedFrom = origin
+        let found = await PinoDirections.route(
+            from: origin.coordinate,
+            to: findPin.coordinate,
+            mode: .walking
+        )
+        route = found
+        camera = PinoMaps.followUser(origin, compass: location.currentHeading, route: found)
+#else
         if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
             return
         }
@@ -202,6 +239,7 @@ struct FindView: View {
         } else {
             camera = .region(PinoMaps.region(containing: [origin.coordinate, findPin.coordinate]))
         }
+#endif
     }
 }
 

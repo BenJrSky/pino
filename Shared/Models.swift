@@ -295,6 +295,22 @@ enum GeoMath {
         let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
         return (atan2(y, x) * 180 / .pi + 360).truncatingRemainder(dividingBy: 360)
     }
+
+    static func lerp(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D, _ t: Double) -> CLLocationCoordinate2D {
+        CLLocationCoordinate2D(
+            latitude: a.latitude + (b.latitude - a.latitude) * t,
+            longitude: a.longitude + (b.longitude - a.longitude) * t
+        )
+    }
+
+    static func project(_ point: CLLocationCoordinate2D, onto a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
+        let ab = distance(from: a, to: b)
+        guard ab > 0.4 else { return a }
+        let ap = distance(from: a, to: point)
+        let bp = distance(from: b, to: point)
+        let t = (ap * ap + ab * ab - bp * bp) / (2 * ab * ab)
+        return lerp(a, b, min(1, max(0, t)))
+    }
 }
 
 enum Formatters {

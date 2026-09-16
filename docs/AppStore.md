@@ -3,9 +3,11 @@
 Paste this after the Apple Developer Program is active. Create the app with bundle `it.devben.pino` (Watch `it.devben.pino.watchkitapp`).
 
 ## Identity
-- Name: PinO
-- Subtitle (EN, 30 chars): A pin. And you're back.
-- Subtitle (IT): Un pin. E torni.
+- Name (EN, store): PinO: A pin. And you're back
+- Name (IT, store): PinO: Un pin. E torni.
+- Subtitle (EN): iPhone and Apple Watch
+- Subtitle (IT): iPhone e Apple Watch
+- Home screen: PinO
 - Bundle ID: `it.devben.pino`
 - Watch: `it.devben.pino.watchkitapp`
 - SKU: `pino`
