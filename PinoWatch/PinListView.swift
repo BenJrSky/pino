@@ -8,46 +8,56 @@ struct PinListView: View {
     @State private var editPin: Pin?
 
     var body: some View {
-        List {
-            ForEach(store.pins) { pin in
-                HStack(spacing: 4) {
-                    Button {
-                        environment.find(pin)
-                        dismiss()
-                    } label: {
-                        HStack {
-                            SavedPinMark(category: pin.category, skinTone: pin.skinTone ?? .none, diameter: 22)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(pin.displayName)
-                                    .lineLimit(1)
-                                if let distance = location.distance(to: pin) {
-                                    Text(Formatters.distance(distance))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
+        Group {
+            if store.pins.isEmpty {
+                Text("Tap the map.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(store.pins) { pin in
+                        HStack(spacing: 4) {
+                            Button {
+                                environment.find(pin)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    SavedPinMark(category: pin.category, skinTone: pin.skinTone ?? .none, diameter: 22)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(pin.displayName)
+                                            .lineLimit(1)
+                                        if let distance = location.distance(to: pin) {
+                                            Text(Formatters.distance(distance))
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer(minLength: 0)
                                 }
                             }
-                            Spacer(minLength: 0)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(pin.displayName)
-                    .accessibilityHint("Find")
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(pin.displayName)
+                            .accessibilityHint("Find")
 
-                    TravelModeButton(pin: pin)
-                }
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    Button {
-                        editPin = pin
-                    } label: {
-                        Label("Details", systemImage: "pencil")
-                    }
-                    .tint(Color.pino)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        store.delete(pin)
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                            TravelModeButton(pin: pin)
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                editPin = pin
+                            } label: {
+                                Label("Details", systemImage: "pencil")
+                            }
+                            .tint(Color.pino)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                store.delete(pin)
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
@@ -62,6 +72,8 @@ struct PinListView: View {
                     ManualPinView()
                 } label: {
                     Image(systemName: "plus")
+                        .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                        .frame(width: PinoChrome.size, height: PinoChrome.size)
                 }
                 .accessibilityLabel("Add pin")
             }

@@ -115,16 +115,22 @@ enum PinCategory: String, Codable, CaseIterable, Identifiable {
         takesSkinTone ? emoji + tone.modifier : emoji
     }
 
+    static var quick: [PinCategory] { [.place, .car, .hotel, .home, .keys] }
+
     static var alphabetically: [PinCategory] {
+        let quickSet = Set(quick)
         let group: [PinCategory] = [.man, .woman, .boy, .girl]
         let clustered = Set(group)
-        let rest = allCases.filter { !clustered.contains($0) }
+        let rest = allCases.filter { !clustered.contains($0) && !quickSet.contains($0) }
             .sorted { $0.label.localizedStandardCompare($1.label) == .orderedAscending }
         let anchor = group.map(\.label).min { $0.localizedStandardCompare($1) == .orderedAscending } ?? group[0].label
+        let withPeople: [PinCategory]
         if let index = rest.firstIndex(where: { $0.label.localizedStandardCompare(anchor) == .orderedDescending }) {
-            return Array(rest[..<index]) + group + Array(rest[index...])
+            withPeople = Array(rest[..<index]) + group + Array(rest[index...])
+        } else {
+            withPeople = rest + group
         }
-        return rest + group
+        return quick + withPeople
     }
 }
 
@@ -318,7 +324,7 @@ enum Formatters {
         let formatter = MeasurementFormatter()
         formatter.locale = .autoupdatingCurrent
         formatter.unitOptions = .naturalScale
-        formatter.unitStyle = .medium
+        formatter.unitStyle = .short
         formatter.numberFormatter.maximumFractionDigits = 1
         return formatter
     }()

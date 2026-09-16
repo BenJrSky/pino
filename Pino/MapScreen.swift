@@ -15,6 +15,8 @@ struct MapScreen: View {
                             ManualPinView()
                         } label: {
                             Image(systemName: "plus")
+                                .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                                .frame(width: PinoChrome.size, height: PinoChrome.size)
                         }
                         .accessibilityLabel("Add pin")
                     }
@@ -23,7 +25,11 @@ struct MapScreen: View {
                             Button {
                                 environment.find(pin)
                             } label: {
-                                Image(systemName: "location.north.fill")
+                                SavedPinMark(
+                                    category: pin.category,
+                                    skinTone: pin.skinTone ?? .none,
+                                    diameter: PinoChrome.size
+                                )
                             }
                             .accessibilityLabel("Find")
                         }

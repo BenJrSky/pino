@@ -114,6 +114,7 @@ final class AppEnvironment: ObservableObject {
     }
 
     func savePin(category: PinCategory) async throws -> Pin {
+        settings.lastCategory = category
         let current = try await location.requestLocation()
         let pin = Pin.make(location: current, category: category, skinTone: settings.skinTone)
         store.add(pin)
@@ -152,6 +153,7 @@ final class AppEnvironment: ObservableObject {
         )
         pin.name = trimmedName.isEmpty ? nil : trimmedName
         pin.address = hit.line.isEmpty ? Formatters.coordinate(hit.coordinate) : hit.line
+        settings.lastCategory = category ?? .place
         store.add(pin)
         return pin
     }

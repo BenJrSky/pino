@@ -103,7 +103,9 @@ struct PinsScreen: View {
                     NavigationLink {
                         ManualPinView()
                     } label: {
-                        Image(systemName: "plus")
+                    Image(systemName: "plus")
+                        .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                        .frame(width: PinoChrome.size, height: PinoChrome.size)
                     }
                     .accessibilityLabel("Add pin")
                 }

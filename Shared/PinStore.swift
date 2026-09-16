@@ -21,11 +21,21 @@ final class SettingsStore: ObservableObject {
         didSet { UserDefaults.standard.set(skinTone.rawValue, forKey: Keys.skinTone) }
     }
 
+    @Published var lastCategory: PinCategory {
+        didSet { UserDefaults.standard.set(lastCategory.rawValue, forKey: Keys.lastCategory) }
+    }
+
+    @Published var didMapSave: Bool {
+        didSet { UserDefaults.standard.set(didMapSave, forKey: Keys.didMapSave) }
+    }
+
     init() {
         retention = RetentionPeriod(rawValue: UserDefaults.standard.string(forKey: Keys.retention) ?? "") ?? .forever
         proximityAlerts = UserDefaults.standard.bool(forKey: Keys.proximity)
         guidance = UserDefaults.standard.object(forKey: Keys.guidance) as? Bool ?? true
         skinTone = SkinTone(rawValue: UserDefaults.standard.integer(forKey: Keys.skinTone)) ?? .none
+        lastCategory = PinCategory(rawValue: UserDefaults.standard.string(forKey: Keys.lastCategory) ?? "") ?? .place
+        didMapSave = UserDefaults.standard.bool(forKey: Keys.didMapSave)
     }
 
     private enum Keys {
@@ -33,6 +43,8 @@ final class SettingsStore: ObservableObject {
         static let proximity = "pino.proximityAlerts"
         static let guidance = "pino.guidance"
         static let skinTone = "pino.skinTone"
+        static let lastCategory = "pino.lastCategory"
+        static let didMapSave = "pino.didMapSave"
     }
 }
 

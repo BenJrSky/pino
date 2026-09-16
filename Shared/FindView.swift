@@ -51,7 +51,12 @@ struct FindView: View {
                 }
                 ForEach(store.pins) { item in
                     Annotation("", coordinate: item.coordinate) {
-                        SavedPinMark(category: item.category, skinTone: item.skinTone ?? .none, diameter: markSize)
+                        SavedPinMark(
+                            category: item.category,
+                            skinTone: item.skinTone ?? .none,
+                            diameter: markSize,
+                            here: PinoWayfinding.isHere(user: location.location, pin: item, finding: findPin)
+                        )
                             .scaleEffect(item.id == findPin?.id ? 1.18 : 1)
                             .mapGestures(
                                 onFind: { handleIconTap(item) },
@@ -89,22 +94,22 @@ struct FindView: View {
             VStack(spacing: 0) {
                 Spacer()
                     .allowsHitTesting(false)
-                HStack(alignment: .center, spacing: 8) {
+                VStack(spacing: 4) {
                     if findPin != nil {
+                        HStack {
+                            GuidanceButton()
+                            Spacer(minLength: 0)
+                        }
                         FindHUD(pin: livePin, route: route)
-                        Spacer(minLength: 4)
-                        GuidanceButton()
-                    } else {
-                        Spacer(minLength: 0)
                     }
-                    RecenterButton(action: recenter)
                 }
                 .contentShape(Rectangle())
 #if os(watchOS)
-                .padding(6)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
 #else
-                .padding(.horizontal, 16)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 28)
 #endif
             }
         }
@@ -188,19 +193,6 @@ struct FindView: View {
         }
         findPin = nil
         route = nil
-    }
-
-    private func recenter() {
-        if let user = location.location {
-#if os(watchOS)
-            camera = PinoMaps.followUser(user, compass: location.currentHeading, route: route)
-#else
-            camera = PinoMaps.userCamera(user.coordinate)
-#endif
-        } else {
-            camera = .userLocation(fallback: .automatic)
-        }
-        PinoHaptics.click()
     }
 
     private func loadRoute() async {
@@ -297,7 +289,6 @@ struct PinEditView: View {
             .navigationTitle("Details")
             .onDisappear(perform: save)
             .onChange(of: name) { _, _ in save() }
-            .onChange(of: category) { _, _ in save() }
 #if os(iOS)
             .onAppear {
                 if current.category?.takesSkinTone == true {
@@ -311,14 +302,14 @@ struct PinEditView: View {
     @ViewBuilder
     private var content: some View {
 #if os(watchOS)
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 2) {
+            CategoryGallery(
+                selection: Binding(
+                    get: { category ?? .place },
+                    set: { category = $0 }
+                )
+            )
             TextField("Name", text: $name)
-            if let address = current.address {
-                Text(address)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
         }
 #else
         ScrollView {

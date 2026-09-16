@@ -52,9 +52,9 @@ struct ManualPinView: View {
         isSaving = true
         do {
             _ = try await environment.savePin(category: chosen)
+            environment.settings.didMapSave = true
             isSaving = false
             PinoHaptics.success()
-            environment.showPinsList = true
             dismiss()
         } catch {
             isSaving = false
@@ -98,6 +98,9 @@ struct ManualPinView: View {
         }
         .navigationTitle("Add pin")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            category = environment.settings.lastCategory
+        }
         .modifier(ManualPinChrome(
             canSave: canSave,
             isSaving: isSaving,
@@ -147,6 +150,7 @@ struct ManualPinView: View {
                 category: category,
                 at: picked?.coordinate
             )
+            environment.settings.didMapSave = true
             isSaving = false
             PinoHaptics.success()
             dismiss()

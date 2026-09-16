@@ -1,5 +1,8 @@
 import MapKit
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 extension Color {
     static let pino = Color(red: 52 / 255, green: 199 / 255, blue: 89 / 255)
@@ -60,7 +63,6 @@ enum PinoMaps {
     }
 
     static func followUser(_ user: CLLocation, compass: Double?, route: MKRoute? = nil) -> MapCameraPosition {
-#if os(watchOS)
         if let route, let snap = PinoWayfinding.snap(from: user.coordinate, onto: route), snap.offset < 40 {
             return streetCamera(snap)
         }
@@ -71,9 +73,6 @@ enum PinoMaps {
             heading: facing,
             pitch: 48
         ))
-#else
-        return userCamera(user.coordinate)
-#endif
     }
 
     static func streetCamera(_ snap: PinoWayfinding.Snap) -> MapCameraPosition {
@@ -173,6 +172,11 @@ enum PinoWayfinding {
         return meters <= 10 && meters + accuracy / 2 <= 18
     }
 
+    static func isHere(user: CLLocation?, pin: Pin, finding: Pin?) -> Bool {
+        guard let user, finding?.id == pin.id else { return false }
+        return hasArrived(user: user, pin: pin)
+    }
+
     static func spokenCue(delta: Double) -> String {
         let magnitude = abs(delta)
         if magnitude <= 35 { return String(localized: "Straight ahead") }
@@ -222,13 +226,20 @@ struct SavedPinMark: View {
     var category: PinCategory?
     var skinTone: SkinTone = .none
     var diameter: CGFloat = 28
+    var here: Bool = false
 
     var body: some View {
         Text(category?.emoji(tone: skinTone) ?? "📍")
-            .font(.system(size: diameter * 0.52))
+            .font(.system(size: diameter * (here ? 0.4 : 0.52)))
             .frame(width: diameter, height: diameter)
-            .background(Color.pino, in: Circle())
-            .accessibilityLabel(category?.label ?? "")
+            .background {
+                Image(systemName: here ? "star.fill" : "circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(here ? Color(red: 1, green: 0.76, blue: 0.12) : Color.pino)
+                    .frame(width: here ? diameter * 1.22 : diameter, height: here ? diameter * 1.22 : diameter)
+            }
+            .accessibilityLabel(here ? String(localized: "Here") : (category?.label ?? ""))
     }
 }
 
@@ -251,18 +262,66 @@ struct MapSaveHint: View {
     var body: some View {
         Text("Tap to save")
 #if os(watchOS)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
 #else
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .font(.caption.weight(.semibold))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
 #endif
             .foregroundStyle(.white)
             .background(.black.opacity(0.55), in: Capsule())
-            .padding(.top, 72)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+struct PinoChrome {
+#if os(watchOS)
+    static let size: CGFloat = 24
+    static let button: CGFloat = 32
+#else
+    static let size: CGFloat = 28
+    static let button: CGFloat = 36
+#endif
+}
+
+struct MapCircleButton: View {
+    var systemName: String
+    var action: () -> Void
+    var label: String
+    var value: String? = nil
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: PinoChrome.button * 0.4, weight: .semibold))
+                .frame(width: PinoChrome.button, height: PinoChrome.button)
+                .foregroundStyle(.black.opacity(0.7))
+                .background(.white.opacity(0.92), in: Circle())
+#if os(iOS)
+                .shadow(color: .black.opacity(0.16), radius: 4, y: 1)
+#endif
+        }
+        .buttonStyle(.plain)
+        .frame(width: 44, height: 44, alignment: .bottom)
+        .contentShape(Rectangle())
+        .accessibilityLabel(label)
+        .accessibilityValue(value ?? "")
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func pinoMapTap(_ enabled: Bool, perform action: @escaping () -> Void) -> some View {
+        if enabled {
+#if os(watchOS)
+            self.onTapGesture(perform: action)
+#else
+            self.simultaneousGesture(TapGesture().onEnded(action))
+#endif
+        } else {
+            self
+        }
     }
 }
 
@@ -270,8 +329,8 @@ extension View {
     func mapGestures(onFind: @escaping () -> Void, onEdit: @escaping () -> Void) -> some View {
         padding(12)
             .contentShape(Circle())
-            .highPriorityGesture(TapGesture(count: 2).onEnded(onEdit))
             .onTapGesture(perform: onFind)
+            .onLongPressGesture(minimumDuration: 0.45, perform: onEdit)
     }
 }
 
@@ -304,53 +363,61 @@ struct GuidanceButton: View {
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
-        Button {
-            settings.guidance.toggle()
-            if settings.guidance {
-                PinoHaptics.click()
-            } else {
-                VoiceGuide.stop()
-            }
-        } label: {
-            Image(systemName: settings.guidance ? "speaker.wave.2.fill" : "speaker.slash.fill")
-#if os(watchOS)
-                .font(.caption.weight(.semibold))
-                .frame(width: 32, height: 32)
-#else
-                .font(.body.weight(.semibold))
-                .frame(width: 44, height: 44)
-#endif
-                .foregroundStyle(.black.opacity(0.7))
-                .background(.white.opacity(0.92), in: Circle())
-                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
-        }
-        .buttonStyle(.plain)
-        .contentShape(Circle())
-        .accessibilityLabel("Voice and vibration")
-        .accessibilityValue(settings.guidance ? "On" : "Off")
+        MapCircleButton(
+            systemName: settings.guidance ? "speaker.wave.2.fill" : "speaker.slash.fill",
+            action: {
+                settings.guidance.toggle()
+                if settings.guidance {
+                    PinoHaptics.click()
+                } else {
+                    VoiceGuide.stop()
+                }
+            },
+            label: "Voice and vibration",
+            value: settings.guidance ? "On" : "Off"
+        )
     }
 }
 
-struct RecenterButton: View {
+struct StopFindButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "location.fill")
-#if os(watchOS)
-                .font(.caption.weight(.semibold))
-                .frame(width: 32, height: 32)
-#else
-                .font(.body.weight(.semibold))
-                .frame(width: 44, height: 44)
+        MapCircleButton(
+            systemName: "xmark",
+            action: action,
+            label: "Stop"
+        )
+    }
+}
+
+struct LocationDeniedHint: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Text("Location access is off. Turn it on in Settings.")
+                .multilineTextAlignment(.center)
+#if os(iOS)
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .font(.subheadline.weight(.semibold))
 #endif
-                .foregroundStyle(.black.opacity(0.7))
-                .background(.white.opacity(0.92), in: Circle())
-                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
         }
-        .buttonStyle(.plain)
-        .contentShape(Circle())
-        .accessibilityLabel("My location")
+#if os(watchOS)
+        .font(.caption.weight(.semibold))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+#else
+        .font(.subheadline.weight(.semibold))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+#endif
+        .foregroundStyle(.white)
+        .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.top, 72)
+        .padding(.horizontal, 16)
     }
 }
 
@@ -358,14 +425,13 @@ struct TravelModeButton: View {
     let pin: Pin
     @EnvironmentObject private var store: PinStore
 
+    private var live: Pin {
+        store.pins.first(where: { $0.id == pin.id }) ?? pin
+    }
+
     var body: some View {
-        Button {
-            var updated = pin
-            updated.travelMode = pin.routeMode.next
-            store.update(updated)
-            PinoHaptics.click()
-        } label: {
-            Image(systemName: pin.routeMode.symbol)
+        Button(action: cycle) {
+            Image(systemName: live.routeMode.symbol)
 #if os(watchOS)
                 .font(.caption.weight(.semibold))
                 .frame(width: 28, height: 28)
@@ -381,7 +447,14 @@ struct TravelModeButton: View {
 #else
         .buttonStyle(.borderless)
 #endif
-        .accessibilityLabel(pin.routeMode.label)
+        .accessibilityLabel(live.routeMode.label)
         .accessibilityHint("Travel mode")
+    }
+
+    private func cycle() {
+        var updated = live
+        updated.travelMode = live.routeMode.next
+        store.update(updated)
+        PinoHaptics.click()
     }
 }

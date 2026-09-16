@@ -29,7 +29,9 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         manager.distanceFilter = kCLDistanceFilterNone
         manager.headingFilter = 3
         manager.activityType = .fitness
+#if os(iOS)
         manager.pausesLocationUpdatesAutomatically = false
+#endif
         status = manager.authorizationStatus
         super.init()
         manager.delegate = self
@@ -39,6 +41,10 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         guard let heading else { return nil }
         let value = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
         return value >= 0 ? value : nil
+    }
+
+    var isDenied: Bool {
+        status == .denied || status == .restricted
     }
 
     func requestAccess() {
@@ -56,7 +62,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     func setNavigating(_ on: Bool) {
 #if os(watchOS)
         manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = on ? kCLDistanceFilterNone : 4
+        manager.distanceFilter = on ? 5 : 8
         if on, CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         } else {
@@ -65,7 +71,7 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         }
 #else
         manager.desiredAccuracy = on ? kCLLocationAccuracyBestForNavigation : kCLLocationAccuracyBest
-        manager.distanceFilter = on ? 1 : 8
+        manager.distanceFilter = on ? 5 : 12
         if CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         }

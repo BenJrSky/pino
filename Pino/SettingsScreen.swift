@@ -7,6 +7,18 @@ struct SettingsScreen: View {
         NavigationStack {
             Form {
                 Section {
+                    Toggle("Proximity alerts", isOn: $settings.proximityAlerts)
+                } footer: {
+                    Text("PinO can remind you when you are near a saved pin again.")
+                }
+
+                Section {
+                    Toggle("Voice and vibration", isOn: $settings.guidance)
+                } footer: {
+                    Text("Spoken directions and haptics while you find a pin.")
+                }
+
+                Section {
                     Picker("Keep pins", selection: $settings.retention) {
                         ForEach(RetentionPeriod.allCases) { period in
                             Text(period.label).tag(period)
@@ -14,12 +26,6 @@ struct SettingsScreen: View {
                     }
                 } footer: {
                     Text("Pins older than the selected period are deleted automatically. Choose Forever to keep them all.")
-                }
-
-                Section {
-                    Toggle("Proximity alerts", isOn: $settings.proximityAlerts)
-                } footer: {
-                    Text("PinO can remind you when you are near a saved pin again.")
                 }
 
                 Section {

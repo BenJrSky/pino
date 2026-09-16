@@ -29,6 +29,8 @@ struct HomeView: View {
                             ManualPinView()
                         } label: {
                             Image(systemName: "plus")
+                                .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                                .frame(width: PinoChrome.size, height: PinoChrome.size)
                         }
                         .accessibilityLabel("Add pin")
                     }
@@ -37,8 +39,11 @@ struct HomeView: View {
                             Button {
                                 environment.find(pin)
                             } label: {
-                                Image(systemName: "location.north.fill")
-                                    .foregroundStyle(.white)
+                                SavedPinMark(
+                                    category: pin.category,
+                                    skinTone: pin.skinTone ?? .none,
+                                    diameter: PinoChrome.size
+                                )
                             }
                             .accessibilityLabel("Find")
                         }
@@ -46,6 +51,8 @@ struct HomeView: View {
                             PinListView()
                         } label: {
                             Image(systemName: "mappin")
+                                .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                                .frame(width: PinoChrome.size, height: PinoChrome.size)
                                 .symbolRenderingMode(.monochrome)
                         }
                         .disabled(store.pins.isEmpty)

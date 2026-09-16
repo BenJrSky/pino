@@ -96,7 +96,7 @@ struct PinDetailView: View {
             }
         }
         .onChange(of: name) { _, _ in save() }
-        .onChange(of: category) { _, _ in save() }
+        .onDisappear(perform: save)
         .onChange(of: environment.settings.skinTone) { _, _ in save() }
     }
 

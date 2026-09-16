@@ -6,16 +6,14 @@ struct SaveMapScreen: View {
     @EnvironmentObject private var environment: AppEnvironment
     @EnvironmentObject private var store: PinStore
     @EnvironmentObject private var location: LocationService
-    @State private var isSaving = false
-    @State private var pickerVisible = false
-    @State private var selected: PinCategory = .car
-    @State private var errorMessage: String?
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: MKRoute?
     @State private var lastRoutedFrom: CLLocation?
+    @State private var lastFollowed: CLLocation?
+    @State private var lastFollowAt = Date.distantPast
     @State private var pinTapAt: Date?
-    @State private var lastTappedPin: Pin?
     @State private var settingsPin: Pin?
+    @State private var showAdd = false
     @State private var pendingPinTap: Task<Void, Never>?
     @State private var lastHeadingCamera = Date.distantPast
 
@@ -26,7 +24,7 @@ struct SaveMapScreen: View {
 #endif
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             Map(position: $camera) {
                 if let route {
                     MapPolyline(route.polyline)
@@ -37,7 +35,12 @@ struct SaveMapScreen: View {
                 }
                 ForEach(store.pins) { pin in
                     Annotation("", coordinate: pin.coordinate) {
-                        SavedPinMark(category: pin.category, skinTone: pin.skinTone ?? .none, diameter: markSize)
+                        SavedPinMark(
+                            category: pin.category,
+                            skinTone: pin.skinTone ?? .none,
+                            diameter: markSize,
+                            here: PinoWayfinding.isHere(user: location.location, pin: pin, finding: findPin)
+                        )
                             .scaleEffect(findPin?.id == pin.id ? 1.18 : 1)
                             .mapGestures(
                                 onFind: { handleIconTap(pin) },
@@ -62,69 +65,24 @@ struct SaveMapScreen: View {
             .pinoMapStyle()
             .mapControlVisibility(.hidden)
             .ignoresSafeArea()
-            .allowsHitTesting(!pickerVisible)
-#if os(watchOS)
-            .onTapGesture(perform: handleMapTap)
-#else
-            .simultaneousGesture(TapGesture().onEnded(handleMapTap))
-#endif
+            .allowsHitTesting(true)
+            .pinoMapTap(findPin == nil, perform: handleMapTap)
 
-            if let findPin, !pickerVisible {
+            if let findPin {
                 WayfindingBanner(pin: findPin, route: route)
                 FindGuidance(pin: findPin, route: route)
             }
 
-            if !pickerVisible {
-                VStack(spacing: 0) {
-                    Spacer()
-                        .allowsHitTesting(false)
-                    HStack(alignment: .center, spacing: 8) {
-                        if let findPin {
-                            FindHUD(pin: findPin, route: route)
-                            Spacer(minLength: 4)
-                            GuidanceButton()
-                        } else {
-                            Spacer(minLength: 0)
-                        }
-                        RecenterButton(action: recenter)
-                    }
-                    .contentShape(Rectangle())
+            mapChrome
+        }
 #if os(watchOS)
-                    .padding(6)
-#else
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 28)
+        .ignoresSafeArea(edges: .bottom)
 #endif
-                }
-            }
-
-            if pickerVisible {
-#if os(watchOS)
-                gallery
-#else
-                Color.black.opacity(0.18)
-                    .ignoresSafeArea()
-                    .onTapGesture { pickerVisible = false }
-
-                VStack {
-                    Spacer()
-                    gallery
-                }
-                .allowsHitTesting(true)
-#endif
-            }
-
-            if store.pins.isEmpty, findPin == nil, !pickerVisible {
-                MapSaveHint()
-                    .allowsHitTesting(false)
-            }
-
-            if isSaving {
-                ProgressView()
-                    .tint(.white)
+        .overlay(alignment: .top) {
+            if location.isDenied {
+                LocationDeniedHint()
             }
         }
-        .toolbar(pickerVisible ? .hidden : .automatic, for: .navigationBar)
         .onChange(of: findPin) { _, pin in
             lastRoutedFrom = nil
             route = nil
@@ -140,28 +98,28 @@ struct SaveMapScreen: View {
             environment.stopFind()
             route = nil
         }
+        .onChange(of: findTravelMode) { _, _ in
+            lastRoutedFrom = nil
+            route = nil
+            Task { await loadRoute() }
+        }
         .onChange(of: location.location?.timestamp) { _, _ in
 #if DEBUG
             applyScreenshotOverview()
 #endif
             updateFollow()
+            guard findPin != nil else { return }
             Task { await loadRoute() }
         }
         .onChange(of: location.heading?.timestamp) { _, _ in
 #if os(watchOS)
             let now = Date()
-            guard now.timeIntervalSince(lastHeadingCamera) >= 0.3 else { return }
+            guard now.timeIntervalSince(lastHeadingCamera) >= 1 else { return }
+            guard now.timeIntervalSince(lastFollowAt) >= 0.8 else { return }
+            guard let user = location.location, user.speed >= 0.5 else { return }
             lastHeadingCamera = now
             followUser()
 #endif
-        }
-        .alert("PinO", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button("OK", role: .cancel) { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
         }
         .onAppear {
             location.start()
@@ -174,6 +132,9 @@ struct SaveMapScreen: View {
         .onDisappear {
             pendingPinTap?.cancel()
         }
+        .navigationDestination(isPresented: $showAdd) {
+            ManualPinView()
+        }
         .navigationDestination(item: $settingsPin) { pin in
 #if os(iOS)
             PinDetailView(pin: pin)
@@ -181,6 +142,47 @@ struct SaveMapScreen: View {
             PinEditView(pin: pin)
 #endif
         }
+    }
+
+    private var showsSaveHint: Bool {
+        findPin == nil && (store.pins.isEmpty || !environment.settings.didMapSave) && !location.isDenied
+    }
+
+    private var mapChrome: some View {
+        Group {
+            if let findPin {
+                VStack(spacing: 2) {
+                    HStack {
+                        GuidanceButton()
+                        Spacer(minLength: 0)
+                        StopFindButton {
+                            environment.stopFind()
+                            PinoHaptics.click()
+                        }
+                    }
+                    FindHUD(pin: findPin, route: route)
+                }
+            } else if showsSaveHint {
+                MapSaveHint()
+                    .allowsHitTesting(false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+#if os(watchOS)
+        .padding(.horizontal, 8)
+#else
+        .padding(.horizontal, 12)
+        .padding(.bottom, 4)
+#endif
+    }
+
+    private func liveFindPin(_ pin: Pin) -> Pin {
+        store.pins.first(where: { $0.id == pin.id }) ?? pin
+    }
+
+    private var findTravelMode: TravelMode? {
+        guard let id = findPin?.id else { return nil }
+        return store.pins.first(where: { $0.id == id })?.routeMode
     }
 
     private var routeSnap: PinoWayfinding.Snap? {
@@ -191,42 +193,8 @@ struct SaveMapScreen: View {
         return snap
     }
 
-    private var gallery: some View {
-#if os(watchOS)
-        VStack(spacing: 6) {
-            CategoryGallery(
-                selection: $selected,
-                hint: "Tap to save",
-                onConfirm: { category in
-                    Task { await save(category) }
-                }
-            )
-            Button("Cancel") {
-                pickerVisible = false
-            }
-            .font(.caption.weight(.semibold))
-            .buttonStyle(.bordered)
-            .tint(.white)
-            .accessibilityLabel("Cancel")
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.black.opacity(0.72))
-#else
-        CategoryGallery(
-            selection: $selected,
-            hint: "Tap to save",
-            showsChrome: true,
-            onConfirm: { category in
-                Task { await save(category) }
-            }
-        )
-#endif
-    }
-
     private func handleIconTap(_ pin: Pin) {
-        lastTappedPin = pin
         pinTapAt = Date()
-        pickerVisible = false
         pendingPinTap?.cancel()
         pendingPinTap = Task {
             try? await Task.sleep(for: .milliseconds(280))
@@ -238,9 +206,7 @@ struct SaveMapScreen: View {
     }
 
     private func openEdit(_ pin: Pin) {
-        lastTappedPin = pin
         pinTapAt = Date()
-        pickerVisible = false
         pendingPinTap?.cancel()
         pendingPinTap = nil
         settingsPin = pin
@@ -248,46 +214,10 @@ struct SaveMapScreen: View {
     }
 
     private func handleMapTap() {
-        if let pinTapAt {
-            let elapsed = Date().timeIntervalSince(pinTapAt)
-            if elapsed < 0.12 {
-                return
-            }
-            if elapsed < 0.45, let lastTappedPin {
-                openEdit(lastTappedPin)
-                return
-            }
-        }
-        if findPin != nil {
-            environment.stopFind()
-            route = nil
+        if let pinTapAt, Date().timeIntervalSince(pinTapAt) < 0.12 {
             return
         }
-#if os(watchOS)
-        Task { await save(.place) }
-#else
-        showPicker()
-#endif
-    }
-
-    private func showPicker() {
-        guard !isSaving, !pickerVisible else { return }
-        pickerVisible = true
-        PinoHaptics.click()
-    }
-
-    private func recenter() {
-#if os(watchOS)
-        followUser()
-#else
-        if findPin != nil {
-            applyOverview()
-        } else if let user = location.location {
-            camera = PinoMaps.userCamera(user.coordinate)
-        } else {
-            camera = .userLocation(fallback: .automatic)
-        }
-#endif
+        showAdd = true
         PinoHaptics.click()
     }
 
@@ -295,20 +225,34 @@ struct SaveMapScreen: View {
         guard let user = location.location, user.horizontalAccuracy > 0, user.horizontalAccuracy < 45 else {
             return
         }
+#if os(iOS)
+        if findPin == nil {
+            camera = PinoMaps.userCamera(user.coordinate)
+            lastFollowed = user
+            lastFollowAt = Date()
+            return
+        }
+#endif
         camera = PinoMaps.followUser(user, compass: location.currentHeading, route: route)
+        lastFollowed = user
+        lastFollowAt = Date()
     }
 
     private func updateFollow() {
-#if os(iOS)
-        return
-#else
-        followUser()
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-pino-overview") { return }
 #endif
-    }
-
-    private func applyOverview() {
-        guard let pin = findPin, let origin = location.location else { return }
-        camera = PinoMaps.overview(user: origin.coordinate, pin: pin.coordinate, route: route)
+        guard let user = location.location, user.horizontalAccuracy > 0, user.horizontalAccuracy < 45 else {
+            return
+        }
+        let walking = user.speed >= 0.5
+        if let lastFollowed, !walking, user.distance(from: lastFollowed) < 10 {
+            return
+        }
+        if Date().timeIntervalSince(lastFollowAt) < 1 {
+            return
+        }
+        followUser()
     }
 
     private func loadRoute() async {
@@ -327,7 +271,7 @@ struct SaveMapScreen: View {
         let found = await PinoDirections.route(
             from: origin.coordinate,
             to: pin.coordinate,
-            mode: .walking
+            mode: liveFindPin(pin).routeMode
         )
 #else
         if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
@@ -337,35 +281,12 @@ struct SaveMapScreen: View {
         let found = await PinoDirections.route(
             from: origin.coordinate,
             to: pin.coordinate,
-            mode: (store.pins.first(where: { $0.id == pin.id }) ?? pin).routeMode
+            mode: liveFindPin(pin).routeMode
         )
 #endif
         guard findPin?.id == pin.id else { return }
         route = found
-#if os(watchOS)
         followUser()
-#else
-        applyOverview()
-#endif
-    }
-
-    private func save(_ category: PinCategory) async {
-        guard !isSaving else { return }
-        selected = category
-        isSaving = true
-        do {
-            _ = try await environment.savePin(category: category)
-            isSaving = false
-            pickerVisible = false
-            PinoHaptics.success()
-#if os(watchOS)
-            environment.showPinsList = true
-#endif
-        } catch {
-            isSaving = false
-            PinoHaptics.failure()
-            errorMessage = error.localizedDescription
-        }
     }
 
 #if DEBUG
@@ -385,37 +306,64 @@ struct FindHUD: View {
     let pin: Pin
     var route: MKRoute?
     @EnvironmentObject private var location: LocationService
+    @EnvironmentObject private var store: PinStore
 
-    private var line: String {
-        if let route {
-            let distance = Formatters.distance(route.distance)
-            let time = Formatters.duration(route.expectedTravelTime)
-            return time.isEmpty ? distance : "\(distance) · \(time)"
+    private var live: Pin {
+        store.pins.first(where: { $0.id == pin.id }) ?? pin
+    }
+
+    private var distanceText: String {
+        if let meters = location.distance(to: pin) {
+            return Formatters.distance(meters)
         }
-        if let distance = location.distance(to: pin) {
-            return Formatters.distance(distance)
+        if let route {
+            return Formatters.distance(route.distance)
         }
         return ""
     }
 
+    private var timeText: String {
+        guard let route else { return "" }
+        return Formatters.duration(route.expectedTravelTime)
+    }
+
     var body: some View {
-        if !line.isEmpty {
+        Button(action: cycleMode) {
             HStack(spacing: 4) {
-                Image(systemName: pin.routeMode.symbol)
-                Text(line)
+                Image(systemName: live.routeMode.symbol)
+                if !distanceText.isEmpty {
+                    Text(distanceText)
+                }
+                if !distanceText.isEmpty && !timeText.isEmpty {
+                    Text("·")
+                        .opacity(0.5)
+                }
+                if !timeText.isEmpty {
+                    Text(timeText)
+                }
             }
 #if os(watchOS)
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
 #else
-            .font(.caption2.weight(.semibold))
+            .font(.caption.weight(.semibold))
 #endif
             .monospacedDigit()
-            .padding(.horizontal, 7)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(.ultraThinMaterial, in: Capsule())
-            .allowsHitTesting(false)
-            .accessibilityLabel("\(pin.routeMode.label), \(line)")
+            .background(.black.opacity(0.55), in: Capsule())
         }
+        .buttonStyle(.plain)
+        .fixedSize()
+        .accessibilityLabel([live.routeMode.label, distanceText, timeText].filter { !$0.isEmpty }.joined(separator: ", "))
+        .accessibilityHint("Travel mode")
+    }
+
+    private func cycleMode() {
+        var updated = live
+        updated.travelMode = live.routeMode.next
+        store.update(updated)
+        PinoHaptics.click()
     }
 }
 
@@ -439,16 +387,23 @@ struct WayfindingBanner: View {
         return PinoWayfinding.relativeDelta(from: user, to: target, heading: location.currentHeading)
     }
 
+    private var arrived: Bool {
+        guard let user = location.location else { return false }
+        return PinoWayfinding.hasArrived(user: user, pin: pin)
+    }
+
     var body: some View {
         GeometryReader { geo in
-            if let delta {
+            if arrived {
+                Color.clear
+            } else if let delta {
                 let magnitude = abs(delta)
                 if magnitude > 50, magnitude < 125 {
                     Color.clear
                 } else {
                     let edge = PinoWayfinding.edge(for: delta)
                     let correct = magnitude <= 50
-                    strip(edge: edge, color: correct ? Color.pino : .red, in: geo.size)
+                    strip(edge: edge, color: correct ? Color.pino : .red, short: correct, in: geo.size)
                         .animation(.easeInOut(duration: 0.2), value: edge)
                         .animation(.easeInOut(duration: 0.2), value: correct)
                         .onChange(of: correct) { _, isCorrect in
@@ -485,11 +440,11 @@ struct WayfindingBanner: View {
         pulseWrong()
     }
 
-    private func strip(edge: Edge, color: Color, in size: CGSize) -> some View {
+    private func strip(edge: Edge, color: Color, short: Bool, in size: CGSize) -> some View {
 #if os(watchOS)
-        let thickness = min(size.width, size.height) * 0.3
+        let thickness = min(size.width, size.height) * (short ? 0.14 : 0.18)
 #else
-        let thickness = min(size.width, size.height) * 0.13
+        let thickness = min(size.width, size.height) * (short ? 0.09 : 0.13)
 #endif
         return Group {
             switch edge {

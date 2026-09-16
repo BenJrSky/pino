@@ -84,7 +84,12 @@ struct FindGuidance: View {
         if !force, VoiceGuide.tooSoon(3) { return }
 #endif
         if PinoWayfinding.hasArrived(user: user, pin: pin) {
-            VoiceGuide.say(String(localized: "You've arrived."), key: "arrived", minInterval: 40, force: force)
+            VoiceGuide.say(
+                pin.displayName,
+                key: "here-\(pin.id.uuidString)",
+                minInterval: 40,
+                force: force
+            )
             return
         }
         if let route, let next = PinoWayfinding.upcomingStep(in: route, from: user.coordinate) {

@@ -390,7 +390,7 @@ private struct PhoneCategoryScroll: View {
                         }
                         .scrollTargetLayout()
                     }
-                    .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+                    .scrollTargetBehavior(.viewAligned)
                     .scrollPosition(id: scrollID, anchor: .center)
                     .contentMargins(.horizontal, inset, for: .scrollContent)
                     .task { await reveal(proxy) }
