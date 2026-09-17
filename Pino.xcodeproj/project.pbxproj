@@ -497,6 +497,7 @@
 				INFOPLIST_FILE = Pino/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PinO;
 				INFOPLIST_KEY_CFBundleName = PinO;
+				INFOPLIST_KEY_CFBundleSpokenName = Pino;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "PinO uses your location to alert you when you are near a saved pin.";
@@ -540,6 +541,7 @@
 				INFOPLIST_FILE = Pino/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PinO;
 				INFOPLIST_KEY_CFBundleName = PinO;
+				INFOPLIST_KEY_CFBundleSpokenName = Pino;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.navigation";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "PinO uses your location to alert you when you are near a saved pin.";
@@ -584,6 +586,7 @@
 				INFOPLIST_FILE = PinoWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PinO;
 				INFOPLIST_KEY_CFBundleName = PinO;
+				INFOPLIST_KEY_CFBundleSpokenName = Pino;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = it.devben.pino;
@@ -625,6 +628,7 @@
 				INFOPLIST_FILE = PinoWatch/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = PinO;
 				INFOPLIST_KEY_CFBundleName = PinO;
+				INFOPLIST_KEY_CFBundleSpokenName = Pino;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = it.devben.pino;

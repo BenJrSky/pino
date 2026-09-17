@@ -29,6 +29,10 @@ final class SettingsStore: ObservableObject {
         didSet { UserDefaults.standard.set(didMapSave, forKey: Keys.didMapSave) }
     }
 
+    @Published var suggestParking: Bool {
+        didSet { UserDefaults.standard.set(suggestParking, forKey: Keys.suggestParking) }
+    }
+
     init() {
         retention = RetentionPeriod(rawValue: UserDefaults.standard.string(forKey: Keys.retention) ?? "") ?? .forever
         proximityAlerts = UserDefaults.standard.bool(forKey: Keys.proximity)
@@ -36,6 +40,7 @@ final class SettingsStore: ObservableObject {
         skinTone = SkinTone(rawValue: UserDefaults.standard.integer(forKey: Keys.skinTone)) ?? .none
         lastCategory = PinCategory(rawValue: UserDefaults.standard.string(forKey: Keys.lastCategory) ?? "") ?? .place
         didMapSave = UserDefaults.standard.bool(forKey: Keys.didMapSave)
+        suggestParking = UserDefaults.standard.object(forKey: Keys.suggestParking) as? Bool ?? true
     }
 
     private enum Keys {
@@ -45,6 +50,7 @@ final class SettingsStore: ObservableObject {
         static let skinTone = "pino.skinTone"
         static let lastCategory = "pino.lastCategory"
         static let didMapSave = "pino.didMapSave"
+        static let suggestParking = "pino.suggestParking"
     }
 }
 

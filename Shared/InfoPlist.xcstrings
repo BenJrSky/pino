@@ -25,6 +25,18 @@
         }
       }
     },
+    "CFBundleSpokenName" : {
+      "comment" : "Accessibility Bundle Name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Pino"
+          }
+        }
+      }
+    },
     "NSLocationAlwaysAndWhenInUseUsageDescription" : {
       "comment" : "Privacy - Location Always and When In Use Usage Description",
       "localizations" : {
@@ -94,6 +106,12 @@
           }
         }
       }
+    },
+    "PEE no" : {
+
+    },
+    "Pino" : {
+
     }
   },
   "version" : "1.0"

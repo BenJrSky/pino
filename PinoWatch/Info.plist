@@ -4,6 +4,17 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>PinO</string>
+	<key>CFBundleSpokenName</key>
+	<string>Pino</string>
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>Pino</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>PEE no</string>
+		</dict>
+	</array>
 	<key>CFBundleName</key>
 	<string>PinO</string>
 	<key>CFBundleURLTypes</key>

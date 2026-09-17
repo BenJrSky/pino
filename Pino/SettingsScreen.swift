@@ -13,6 +13,12 @@ struct SettingsScreen: View {
                 }
 
                 Section {
+                    Toggle("Parking suggestion", isOn: $settings.suggestParking)
+                } footer: {
+                    Text("When you disconnect from CarPlay, PinO asks to save a parking pin.")
+                }
+
+                Section {
                     Toggle("Voice and vibration", isOn: $settings.guidance)
                 } footer: {
                     Text("Spoken directions and haptics while you find a pin.")
@@ -29,12 +35,56 @@ struct SettingsScreen: View {
                 }
 
                 Section {
+                    LabeledContent("Save car", value: siriCar)
+                    LabeledContent("Save pin", value: siriSave)
+                    LabeledContent("Find", value: siriFind)
+                } header: {
+                    Text("Siri")
+                } footer: {
+                    Text("Say PinO, then the word. English commands work in every language.")
+                }
+
+                Section {
                     NavigationLink("Privacy Policy") {
                         PrivacyPolicyView()
                     }
                 }
             }
             .navigationTitle("Settings")
+        }
+    }
+
+    private var language: String {
+        Locale.current.language.languageCode?.identifier ?? "en"
+    }
+
+    private var siriCar: String {
+        switch language {
+        case "it": return "PinO my car · PinO l'auto · PinO la macchina"
+        case "fr": return "PinO my car · PinO ma voiture · PinO l'auto"
+        case "es": return "PinO my car · PinO mi coche · PinO el coche"
+        case "de": return "PinO my car · PinO mein Auto"
+        default: return "PinO my car"
+        }
+    }
+
+    private var siriSave: String {
+        switch language {
+        case "it": return "PinO save · PinO salva"
+        case "fr": return "PinO save · PinO enregistrer"
+        case "es": return "PinO save · PinO guardar"
+        case "de": return "PinO save · PinO speichern"
+        default: return "PinO save"
+        }
+    }
+
+    private var siriFind: String {
+        switch language {
+        case "it": return "PinO find · PinO trova"
+        case "fr": return "PinO find · PinO trouve"
+        case "es": return "PinO find · PinO encuentra"
+        case "de": return "PinO find · PinO finden"
+        default: return "PinO find"
         }
     }
 }

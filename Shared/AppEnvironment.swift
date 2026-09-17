@@ -1,3 +1,4 @@
+import AppIntents
 import Combine
 import CoreLocation
 import Foundation
@@ -10,6 +11,7 @@ final class AppEnvironment: ObservableObject {
     let location: LocationService
 #if os(iOS)
     let proximity: ProximityMonitor
+    let carPark = CarParkMonitor()
 #endif
 
     private init() {
@@ -36,8 +38,10 @@ final class AppEnvironment: ObservableObject {
         location.requestAccess()
         location.start()
         store.prune()
+        PinoShortcuts.updateAppShortcutParameters()
 #if os(iOS)
         refreshProximity()
+        carPark.start()
 #endif
         locationWatch = location.$location
             .compactMap { $0 }
@@ -106,7 +110,9 @@ final class AppEnvironment: ObservableObject {
         guard url.scheme == "pino" else { return }
         switch url.host {
         case "save":
-            Task { _ = try? await savePin(category: .place) }
+            Task { _ = try? await savePin(category: settings.lastCategory) }
+        case "save-car":
+            Task { _ = try? await savePin(category: .car) }
         case "find":
             if let pin = store.lastPin { find(pin) }
         default:

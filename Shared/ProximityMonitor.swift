@@ -55,6 +55,13 @@ final class ArrivalNotifications: NSObject, UNUserNotificationCenterDelegate {
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
+        if response.notification.request.content.categoryIdentifier == CarParkNotifications.category {
+            let save = response.actionIdentifier == CarParkNotifications.save
+                || response.actionIdentifier == UNNotificationDefaultActionIdentifier
+            guard save else { return }
+            _ = try? await AppEnvironment.shared.savePin(category: .car)
+            return
+        }
         guard let raw = response.notification.request.content.userInfo["pinId"] as? String,
               let id = UUID(uuidString: raw),
               let pin = AppEnvironment.shared.store.pins.first(where: { $0.id == id })
