@@ -25,9 +25,9 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
     private var waiters: [UUID: CheckedContinuation<CLLocation, Error>] = [:]
 
     override init() {
-        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = kCLDistanceFilterNone
-        manager.headingFilter = 3
+        manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        manager.distanceFilter = 20
+        manager.headingFilter = 8
         manager.activityType = .fitness
 #if os(iOS)
         manager.pausesLocationUpdatesAutomatically = false
@@ -59,10 +59,13 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
         setNavigating(false)
     }
 
-    func setNavigating(_ on: Bool) {
+    func setNavigating(_ on: Bool, mode: TravelMode = .walking) {
+        let driving = on && mode != .walking
 #if os(watchOS)
-        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
-        manager.distanceFilter = on ? 5 : 8
+        manager.activityType = driving ? .automotiveNavigation : .fitness
+        manager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        manager.distanceFilter = on ? (driving ? 20 : 5) : 12
+        manager.headingFilter = driving ? 12 : 5
         if on, CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         } else {
@@ -70,10 +73,14 @@ final class LocationService: NSObject, ObservableObject, CLLocationManagerDelega
             heading = nil
         }
 #else
-        manager.desiredAccuracy = on ? kCLLocationAccuracyBestForNavigation : kCLLocationAccuracyBest
-        manager.distanceFilter = on ? 5 : 12
-        if CLLocationManager.headingAvailable() {
+        manager.activityType = driving ? .automotiveNavigation : (on ? .fitness : .other)
+        manager.desiredAccuracy = driving ? kCLLocationAccuracyBestForNavigation : kCLLocationAccuracyNearestTenMeters
+        manager.distanceFilter = on ? (driving ? 20 : 5) : 20
+        manager.headingFilter = driving ? 12 : 5
+        if on, CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
+        } else if !on {
+            manager.stopUpdatingHeading()
         }
 #endif
     }

@@ -35,17 +35,10 @@ struct HomeView: View {
                         .accessibilityLabel("Add pin")
                     }
                     ToolbarItemGroup(placement: .topBarTrailing) {
-                        if let pin = store.lastPin {
-                            Button {
+                        if let pin = environment.findPin ?? store.lastPin {
+                            FindToolbarButton(pin: pin, finding: environment.findPin != nil) {
                                 environment.find(pin)
-                            } label: {
-                                SavedPinMark(
-                                    category: pin.category,
-                                    skinTone: pin.skinTone ?? .none,
-                                    diameter: PinoChrome.size
-                                )
                             }
-                            .accessibilityLabel("Find")
                         }
                         NavigationLink {
                             PinListView()

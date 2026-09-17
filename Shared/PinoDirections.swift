@@ -27,13 +27,17 @@ enum PinoDirections {
         request.destination = MKMapItem(placemark: MKPlacemark(coordinate: to))
         request.transportType = type
         request.requestsAlternateRoutes = false
+        if type == .automobile {
+            request.departureDate = Date()
+        }
+        let timeout: TimeInterval = type == .walking ? 3.5 : 8
         let directions = MKDirections(request: request)
         return await withCheckedContinuation { continuation in
             let once = Once(continuation)
             directions.calculate { response, _ in
                 once.resume(response?.routes.first)
             }
-            DispatchQueue.global().asyncAfter(deadline: .now() + 3.5) {
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
                 directions.cancel()
                 once.resume(nil)
             }

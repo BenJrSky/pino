@@ -59,13 +59,6 @@ struct PinDetailView: View {
                 }
                 .font(.subheadline)
 
-                ShareLink(item: current.mapsURL) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.bordered)
-
                 Button {
                     environment.find(current)
                 } label: {
@@ -74,6 +67,13 @@ struct PinDetailView: View {
                         .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
+
+                ShareLink(item: current.mapsURL) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
 
                 Button("Delete pin", role: .destructive) {
                     confirmDelete = true

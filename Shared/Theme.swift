@@ -36,6 +36,15 @@ enum PinoMaps {
         )
     }
 
+    static func contains(_ coordinate: CLLocationCoordinate2D, in region: MKCoordinateRegion) -> Bool {
+        let halfLat = region.span.latitudeDelta / 2
+        let halfLon = region.span.longitudeDelta / 2
+        guard abs(coordinate.latitude - region.center.latitude) <= halfLat else { return false }
+        var deltaLon = abs(coordinate.longitude - region.center.longitude)
+        if deltaLon > 180 { deltaLon = 360 - deltaLon }
+        return deltaLon <= halfLon
+    }
+
     static func userCamera(_ coordinate: CLLocationCoordinate2D) -> MapCameraPosition {
 #if os(watchOS)
         let delta = 0.0026
@@ -63,24 +72,17 @@ enum PinoMaps {
     }
 
     static func followUser(_ user: CLLocation, compass: Double?, route: MKRoute? = nil) -> MapCameraPosition {
+        let facing: Double
         if let route, let snap = PinoWayfinding.snap(from: user.coordinate, onto: route), snap.offset < 40 {
-            return streetCamera(snap)
+            facing = snap.heading
+        } else {
+            facing = PinoWayfinding.travelHeading(from: user, compass: compass) ?? 0
         }
-        let facing = PinoWayfinding.travelHeading(from: user, compass: compass) ?? 0
         return .camera(MapCamera(
             centerCoordinate: user.coordinate,
-            distance: 52,
+            distance: 72,
             heading: facing,
-            pitch: 48
-        ))
-    }
-
-    static func streetCamera(_ snap: PinoWayfinding.Snap) -> MapCameraPosition {
-        .camera(MapCamera(
-            centerCoordinate: snap.coordinate,
-            distance: 46,
-            heading: snap.heading,
-            pitch: 50
+            pitch: 28
         ))
     }
 }
@@ -114,6 +116,14 @@ enum PinoWayfinding {
             }
         }
         return best
+    }
+
+    static func isFollowing(_ user: CLLocationCoordinate2D, route: MKRoute, mode: TravelMode) -> Bool {
+        guard let snap = snap(from: user, onto: route) else { return false }
+        switch mode {
+        case .walking: return snap.offset < 40
+        case .automobile, .transit: return snap.offset < 80
+        }
     }
 
     static func lookAhead(
@@ -247,28 +257,55 @@ struct OnRoutePuck: View {
     var body: some View {
         ZStack {
             Circle()
+                .fill(.white.opacity(0.35))
+                .frame(width: size * 1.7, height: size * 1.7)
+            Circle()
                 .fill(.white)
-                .frame(width: 16, height: 16)
+                .frame(width: size, height: size)
             Circle()
                 .fill(Color.pino)
-                .frame(width: 11, height: 11)
+                .frame(width: size * 0.62, height: size * 0.62)
         }
-        .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
+        .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
         .accessibilityLabel("You")
+    }
+
+#if os(watchOS)
+    private var size: CGFloat { 18 }
+#else
+    private var size: CGFloat { 28 }
+#endif
+}
+
+struct UserPuckLayer: View {
+    let proxy: MapProxy
+    let coordinate: CLLocationCoordinate2D
+
+    var body: some View {
+        GeometryReader { geo in
+            let point = proxy.convert(coordinate, to: .local)
+                ?? CGPoint(x: geo.size.width / 2, y: geo.size.height * 0.55)
+            OnRoutePuck()
+                .position(point)
+        }
+        .allowsHitTesting(false)
     }
 }
 
 struct MapSaveHint: View {
+    var text: LocalizedStringKey = "Tap to save"
+    var compact: Bool = false
+
     var body: some View {
-        Text("Tap to save")
+        Text(text)
 #if os(watchOS)
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
 #else
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
+            .font(compact ? .caption2.weight(.semibold) : .caption.weight(.semibold))
+            .padding(.horizontal, compact ? 10 : 12)
+            .padding(.vertical, compact ? 5 : 7)
 #endif
             .foregroundStyle(.white)
             .background(.black.opacity(0.55), in: Capsule())
@@ -323,6 +360,19 @@ extension View {
             self
         }
     }
+
+    @ViewBuilder
+    func pinoMapDoubleTap(_ enabled: Bool, perform action: @escaping () -> Void) -> some View {
+        if enabled {
+#if os(watchOS)
+            self.onTapGesture(count: 2, perform: action)
+#else
+            self.highPriorityGesture(TapGesture(count: 2).onEnded(action))
+#endif
+        } else {
+            self
+        }
+    }
 }
 
 extension View {
@@ -339,21 +389,15 @@ extension View {
     func pinoMapStyle() -> some View {
 #if os(watchOS)
         if #available(watchOS 11.0, *) {
-            self.mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll, showsTraffic: false))
-                .environment(\.colorScheme, .light)
-                .preferredColorScheme(.light)
+            self.mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll, showsTraffic: true))
         } else {
-            self.mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: false))
-                .environment(\.colorScheme, .light)
-                .preferredColorScheme(.light)
+            self.mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: true))
         }
 #else
         if #available(iOS 18.0, *) {
-            self.mapStyle(.standard(elevation: .flat, emphasis: .muted, pointsOfInterest: .excludingAll, showsTraffic: false))
-                .environment(\.colorScheme, .light)
+            self.mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll, showsTraffic: true))
         } else {
-            self.mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: false))
-                .environment(\.colorScheme, .light)
+            self.mapStyle(.standard(pointsOfInterest: .excludingAll, showsTraffic: true))
         }
 #endif
     }
@@ -376,6 +420,36 @@ struct GuidanceButton: View {
             label: "Voice and vibration",
             value: settings.guidance ? "On" : "Off"
         )
+    }
+}
+
+struct FindToolbarButton: View {
+    let pin: Pin
+    var finding: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            if finding {
+                HStack(spacing: 3) {
+                    Text(pin.symbol)
+                        .font(.system(size: PinoChrome.size * 0.55))
+                    Image(systemName: "location.north.fill")
+                        .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(.black.opacity(0.55), in: Capsule())
+            } else {
+                Image(systemName: "location.north.fill")
+                    .font(.system(size: PinoChrome.size * 0.42, weight: .semibold))
+                    .frame(width: PinoChrome.size, height: PinoChrome.size)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Find")
+        .accessibilityValue(finding ? pin.displayName : "")
     }
 }
 

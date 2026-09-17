@@ -58,13 +58,6 @@ struct FindGuidance: View {
             .onAppear { announce(force: true) }
             .onDisappear { VoiceGuide.stop() }
             .onChange(of: location.location?.timestamp) { _, _ in announce() }
-#if os(iOS)
-            .onChange(of: location.heading?.timestamp) { _, _ in
-                guard route == nil else { return }
-                announce()
-            }
-#endif
-            .onChange(of: route?.distance) { _, _ in announce(force: true) }
             .onChange(of: settings.guidance) { _, on in
                 if on {
                     announce(force: true)
@@ -92,18 +85,21 @@ struct FindGuidance: View {
             )
             return
         }
+        let mode = store.pins.first(where: { $0.id == pin.id })?.routeMode ?? .walking
         if let route, let next = PinoWayfinding.upcomingStep(in: route, from: user.coordinate) {
-            let phrase = next.remaining > 90
-                ? "\(Formatters.distance(next.remaining)). \(next.instruction)"
-                : next.instruction
+            let near = next.remaining <= 90
+            let phrase = near
+                ? next.instruction
+                : "\(Formatters.distance(next.remaining)). \(next.instruction)"
             VoiceGuide.say(
                 phrase,
                 key: next.instruction,
-                minInterval: next.remaining > 90 ? 22 : 10,
+                minInterval: near ? 14 : 28,
                 force: force
             )
             return
         }
+        guard mode == .walking else { return }
         guard let delta = PinoWayfinding.relativeDelta(
             from: user,
             to: pin.coordinate,

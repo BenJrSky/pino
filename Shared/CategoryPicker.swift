@@ -110,7 +110,7 @@ struct CategoryGallery: View {
             Button {
                 confirmOrSelect(category)
             } label: {
-                CategoryEmoji(category: category, fontSize: 40, swipeAxis: .horizontal)
+                CategoryEmoji(category: category, fontSize: 40)
                     .frame(width: centerSize, height: centerSize)
                     .background(Circle().fill(Color.pino))
             }
@@ -328,7 +328,7 @@ private struct WatchCategoryItem: View {
 
     var body: some View {
         Button(action: onTap) {
-            CategoryEmoji(category: category, fontSize: size * 0.52, swipeAxis: .vertical)
+            CategoryEmoji(category: category, fontSize: size * 0.52)
                 .frame(width: card, height: 44)
                 .background {
                     Circle()
@@ -466,7 +466,7 @@ private struct PhoneCategoryItem: View {
 
     var body: some View {
         Button(action: onTap) {
-            CategoryEmoji(category: category, fontSize: card * (isSelected ? 0.46 : 0.38), swipeAxis: .vertical)
+            CategoryEmoji(category: category, fontSize: card * (isSelected ? 0.46 : 0.38))
                 .frame(width: card, height: centerSize)
                 .background {
                     Circle()
@@ -493,35 +493,21 @@ private struct PhoneCategoryItem: View {
 private struct CategoryEmoji: View {
     let category: PinCategory
     var fontSize: CGFloat
-    var swipeAxis: Axis
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
         Text(category.emoji(tone: category.takesSkinTone ? settings.skinTone : .none))
             .font(.system(size: fontSize))
-            .overlay(alignment: .top) {
-                if category.takesSkinTone {
-                    Color.clear
-                        .frame(height: fontSize * 0.52)
-                        .contentShape(Rectangle())
-                        .simultaneousGesture(swipe)
-                }
-            }
+            .contentShape(Rectangle())
+            .simultaneousGesture(tap)
             .accessibilityAdjustableAction(adjust)
     }
 
-    private var swipe: some Gesture {
-        DragGesture(minimumDistance: 14)
-            .onEnded { value in
-                switch swipeAxis {
-                case .vertical:
-                    guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                    shift(value.translation.height < 0 ? 1 : -1)
-                case .horizontal:
-                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                    shift(value.translation.width < 0 ? 1 : -1)
-                }
-            }
+    private var tap: some Gesture {
+        TapGesture().onEnded {
+            guard category.takesSkinTone else { return }
+            shift(1)
+        }
     }
 
     private func adjust(_ direction: AccessibilityAdjustmentDirection) {

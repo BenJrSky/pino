@@ -199,35 +199,27 @@ struct FindView: View {
         guard let findPin,
               store.pins.contains(where: { $0.id == findPin.id }),
               let origin = location.location else { return }
-#if os(watchOS)
-        if let route,
-           let snap = PinoWayfinding.snap(from: origin.coordinate, onto: route),
-           snap.offset < 25,
-           let lastRoutedFrom,
-           origin.distance(from: lastRoutedFrom) < 12 {
+        let mode = livePin.routeMode
+        if let route, PinoWayfinding.isFollowing(origin.coordinate, route: route, mode: mode) {
+            return
+        }
+        if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 40 {
             return
         }
         lastRoutedFrom = origin
         let found = await PinoDirections.route(
             from: origin.coordinate,
             to: findPin.coordinate,
-            mode: .walking
+            mode: mode
         )
-        route = found
-        camera = PinoMaps.followUser(origin, compass: location.currentHeading, route: found)
-#else
-        if let lastRoutedFrom, origin.distance(from: lastRoutedFrom) < 30 {
-            return
-        }
-        lastRoutedFrom = origin
-        let found = await PinoDirections.route(
-            from: origin.coordinate,
-            to: findPin.coordinate,
-            mode: livePin.routeMode
-        )
-        route = found
         if let found {
-            camera = PinoMaps.camera(for: found)
+            route = found
+        }
+#if os(watchOS)
+        camera = PinoMaps.followUser(origin, compass: location.currentHeading, route: route)
+#else
+        if let route {
+            camera = PinoMaps.camera(for: route)
         } else {
             camera = .region(PinoMaps.region(containing: [origin.coordinate, findPin.coordinate]))
         }

@@ -20,18 +20,11 @@ struct MapScreen: View {
                         }
                         .accessibilityLabel("Add pin")
                     }
-                    if let pin = store.lastPin {
+                    if let pin = environment.findPin ?? store.lastPin {
                         ToolbarItem(placement: .topBarTrailing) {
-                            Button {
+                            FindToolbarButton(pin: pin, finding: environment.findPin != nil) {
                                 environment.find(pin)
-                            } label: {
-                                SavedPinMark(
-                                    category: pin.category,
-                                    skinTone: pin.skinTone ?? .none,
-                                    diameter: PinoChrome.size
-                                )
                             }
-                            .accessibilityLabel("Find")
                         }
                     }
                 }

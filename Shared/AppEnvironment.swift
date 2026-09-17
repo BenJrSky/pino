@@ -25,7 +25,7 @@ final class AppEnvironment: ObservableObject {
     func start() {
         if didStart {
             location.start()
-            location.setNavigating(findPin != nil)
+            location.setNavigating(findPin != nil, mode: findPin?.routeMode ?? .walking)
             return
         }
         didStart = true
@@ -51,7 +51,7 @@ final class AppEnvironment: ObservableObject {
 #if DEBUG
         applyScreenshotLaunchArgs()
 #endif
-        location.setNavigating(findPin != nil)
+        location.setNavigating(findPin != nil, mode: findPin?.routeMode ?? .walking)
     }
 
 #if DEBUG
@@ -84,9 +84,10 @@ final class AppEnvironment: ObservableObject {
     private var didStart = false
 
     func find(_ pin: Pin) {
-        findPin = pin
+        let live = store.pins.first(where: { $0.id == pin.id }) ?? pin
+        findPin = live
         selectedTab = 0
-        location.setNavigating(true)
+        location.setNavigating(true, mode: live.routeMode)
     }
 
     func stopFind() {
